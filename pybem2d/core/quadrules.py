@@ -42,6 +42,7 @@ class GaussQuadrature:
         
         self.adapted1D()
         self.singElement()
+        self.singPoint()
 
     def adapted1D(self):
 
@@ -62,16 +63,42 @@ class GaussQuadrature:
         w1=w*x1[0,:]
         x2=numpy.array([1-x[0],x[1]])
         x2[1,:]=x2[0,:]+x2[1,:]*(1-x2[0,:])
-        w2=w*(1-x1[0])
+        w2=w*(1-x2[0])
         self.x_singElement=numpy.hstack([x1,x2])
         self.w_singElement=numpy.hstack([w1,w2])
 
+    def singPoint(self):
+
+        x,w=tensorquad(self.x,self.w,self.x,self.w)
+        a,b=self.sigma,1
+        xx=numpy.array([[],[]])
+        ww=numpy.array([])
+        for i in range(self.recDepth+1):
+            xs1,ws1=shift2d(x,w,(0,a),(a,b))
+            xs2,ws2=shift2d(x,w,(a,a),(b,b))
+            xs3,ws3=shift2d(x,w,(a,0),(b,a))
+            xx=numpy.hstack([xx,xs1,xs2,xs3])
+            ww=numpy.hstack([ww,ws1,ws2,ws3])
+            a*=self.sigma
+            b*=self.sigma
+        self.x_sing01=numpy.array([xx[0],1-xx[1]])
+        self.w_sing01=ww
+        self.x_sing10=numpy.array([1-xx[0],xx[1]]) 
+        self.w_sing10=ww
+
+    regQuad=property(lambda self: {'x':self.x2, 'w':self.w2})
+    elemQuad=property(lambda self: {'x':self.x_singElement,
+        'w':self.w_singElement})
+    sing01=property(lambda self: {'x':self.x_sing01,'w':self.w_sing01})
+    sing10=property(lambda self: {'x':self.x_sing10,'w':self.w_sing10})
 
 if  __name__ == "__main__":
     #print gauss(2)
     x,w=gauss(10)
     x2,w2=shift2d(x,w,(0,0),(1,1))
-    g=GaussQuadrature(10,2,0.15)
-    plot(g.x_singElement[0,:],g.x_singElement[1,:],'r.')
-    show()
+    g=GaussQuadrature(10,5,0.15)
+    #Test quadrature rules
+    x,w=g.elemQuad['x'],g.elemQuad['w']
+    print sum(x[0]*x[1]*w)
+
 
