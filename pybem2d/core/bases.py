@@ -4,8 +4,8 @@ from scipy.special import eval_sh_legendre
 class ElementToBasis(object):
     """Element to basis map"""
 
-    def __init__(self,seg,domId,segId):
-        self.etob={'segment':seg,'domId':domId,'segId':segId,'basis':[],'basIds':[],'nbas':0}
+    def __init__(self,seg,domId,segId,prevElem,nextElem):
+        self.etob={'segment':seg,'domId':domId,'segId':segId,'basis':[],'basIds':[],'nbas':0,'next':nextElem,'prev':prevElem}
 
     def addBasis(self,basis,n):
         """Add a basis object with the global id n"""
@@ -22,7 +22,8 @@ class MeshToBasis(object):
     """Mesh to basis map"""
 
     def __init__(self,mesh):
-        self.meshToBasis=([ElementToBasis(mesh.segments[domId][segId],domId,segId)
+        self.meshToBasis=([ElementToBasis(mesh.segments[domId][segId],domId,segId,(segId-1)%len(mesh.segments[domId]),
+            (segId+1)%len(mesh.segments[domId])) 
                 for domId in range(len(mesh.segments)) for segId in
                 range(len(mesh.segments[domId]))])
         self.nb=0
@@ -82,8 +83,8 @@ if __name__ == "__main__":
     d=Line((0,1),(0,0))
 
     d=Domain([a,b,c,d])
-    mesh=Mesh([d])
+    mesh=Mesh([d,d])
     mesh.discretize(2)
     mToB=Legendre.legendreBasis(mesh,3)
-    for e in mToB: print e['domId'],e['segId']
+    for e in mToB: print e['domId'],e['segId'],e['next'],e['prev']
     print mToB.nbasis

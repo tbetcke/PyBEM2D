@@ -46,12 +46,12 @@ class Segment(object):
         return self.f(self.view[0]+t*(self.view[1]-self.view[0]))
     
     def normals(self,t):
-        vals=(self.view[1]-self.view[0])*fp(self.view[0]+t*(self.view[1]-self.view[0]))
+        vals=(self.view[1]-self.view[0])*self.fp(self.view[0]+t*(self.view[1]-self.view[0]))
         n=np.vstack([vals[1,:],-vals[0,:]])
         return n
     
     def det(self,t):
-        vals=(self.view[1]-self.view[0])*fp(self.view[0]+t*(self.view[1]-view[0]))
+        vals=(self.view[1]-self.view[0])*self.fp(self.view[0]+t*(self.view[1]-self.view[0]))
         return np.sqrt(np.abs(vals[0,:])**2+np.abs(vals[1,:])**2)
 
     length=property(lambda self: self.L)
@@ -94,7 +94,7 @@ class Line(Segment):
            line(a,b) returns a line segment between a and b           
         """
         f= lambda t: np.vstack([a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])])
-        fp = lambda t: np.vstack([b[0]-a[0],b[1]-a[1]])
+        fp = lambda t: np.vstack([[b[0]-a[0]],[b[1]-a[1]]])
         super(Line,self).__init__(f,fp)
         
 class Arc(Segment):

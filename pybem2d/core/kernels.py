@@ -1,5 +1,5 @@
 from scipy.special import hankel1
-from numpy import sqrt,log
+from numpy import sqrt,log, ones
 
 
 def absdiff(x,y):
@@ -10,24 +10,24 @@ def absdiff(x,y):
 class LogSingleLayer(object):
     """Logarithmic Single Layer Potential"""
 
-    def __call__(self,x,y,normal=None):
+    def __call__(self,x,y,nx=None,ny=None):
         return log(0,absdiff(x,y))
 
 class LogDoubleLayer(object):
     """Logarithmic Double Layer Potential"""
 
-    def __call__(self,x,y,normal):
+    def __call__(self,x,y,nx=None,ny=None):
         w=y-x
         a=w[0]**2+w[1]**2
-        return (normal[0]*w[0]+normal[1]*w[1])*w/a
+        return (ny[0]*w[0]+ny[1]*w[1])*w/a
 
 class LogConjDoubleLayer(object):
     """Logarithmic Conjugate Double Layer Potential"""
 
-    def __call__(self,x,y,normal):
+    def __call__(self,x,y,nx=None,ny=None):
         w=x-y
         a=w[0]**2+w[1]**2
-        return (normal[0]*w[0]+normal[1]*w[1])*w/a
+        return (nx[0]*w[0]+nx[1]*w[1])*w/a
 
 class AcousticSingleLayer(object):
     """Acoustic Single Layer Potential"""
@@ -35,9 +35,35 @@ class AcousticSingleLayer(object):
     def __init__(k):
         self.k=k
 
-    def __call__(self,x,y,normal=None):
-        return hankel1(0,k*absdiff(x,y))
-        
+    def __call__(self,x,y,nx=None,ny=None):
+        return hankel1(0,self.k*absdiff(x,y))
+
+class AcousticDoubleLayer(object):
+    """Acoustic Double Layer Potential"""
+
+    def __init__(self,k):
+        self.k=k
+
+    def __call__(self,x,y,nx=None,ny=None):
+        w=y-x
+        a=sqrt(w[0]**2+w[1]**2)
+        return -self.k*hankel1(1,self.k*a)*(ny[0]*w[0]+ny[1]*w[1])/a
+
+class AcousticConjDoubleLayer(object):
+    """Acoustic Conjugate Double Layer Potential"""
+
+    def __init__(self,k):
+        self.k=k
+
+    def __call__(self,x,y,nx=None,ny=None):
+        w=x-y
+        a=sqrt(w[0]**2+w[1]**2)
+        return -self.k*hankel1(1,self.k*a)*(nx[0]*w[0]+nx[1]*w[1])/a
+
+class Identity(object):
+
+    def __call__(self,x,y,nx=None,ny=None):
+        return ones(x.shape[1])
 
 if  __name__ == "__main__":
     lsing=LogSingleLayer()
@@ -46,6 +72,6 @@ if  __name__ == "__main__":
     x=array([[1,2],[3,4.5]])
     y=array([[4,5.1],[-6,7]])
     normal=array([[1,2],[2,3]])
-    print ldouble(x,y,normal)
+    print ldouble(x,y,ny=normal)
 
 
