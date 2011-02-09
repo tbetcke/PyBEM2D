@@ -86,6 +86,7 @@ class GaussQuadrature:
         self.x_sing10=numpy.array([1-xx[0],xx[1]]) 
         self.w_sing10=ww
 
+    quad1D=property(lambda self: {'x':self.x,'w':self.w})
     regQuad=property(lambda self: {'x':self.x2, 'w':self.w2})
     elemQuad=property(lambda self: {'x':self.x_singElement,
         'w':self.w_singElement})

@@ -3,6 +3,19 @@ from multiprocessing import Process, Queue, cpu_count
 from progressbar import ProgressBar, Percentage, Bar, ETA
 import numpy
 
+def integrate1D(elem,funs,quadRule):
+    """One dimensional integration routine""" 
+
+    x,w=quadRule.quad1D['x'],quadRule.quad1D['w']
+
+    xp=elem['segment'].vals(x)
+    xpdet=elem['segment'].det(x)
+    xpnormals=elem['segment'].normals(x)
+
+    ftx=numpy.array([f(x,xp,xpnormals) for f in elem['basis']]).conj()
+    fty=numpy.array([f(x,xp,xpnormals) for f in funs]).T
+
+    return numpy.dot(ftx*xpdet*w,fty*ypdet)
 
 def assembleElement(eTest,eBas,kernel,quadRule=None,forceQuadRule=None):
     """Assemble the submatrix associated with two elements eTest, eBas using the
@@ -36,20 +49,23 @@ def assembleElement(eTest,eBas,kernel,quadRule=None,forceQuadRule=None):
         x,w=forceQuadRule[0],forceQuadRule[1]
     #Evaluate the quadrature
 
-    ftx=numpy.array([f(x[0]) for f in eTest['basis']]).conj()
-    fty=numpy.array([f(x[1]) for f in eBas['basis']])
-
     xp=eTest['segment'].vals(x[0])
     yp=eBas['segment'].vals(x[1])
     xpdet=eTest['segment'].det(x[0])
     ypdet=eBas['segment'].det(x[1])
     xpnormals=eTest['segment'].normals(x[0])
     ypnormals=eBas['segment'].normals(x[1])
+    ftx=numpy.array([f(x[0],xp,xpnormals) for f in eTest['basis']]).conj()
+    fty=numpy.array([f(x[1],yp,ypnormals) for f in eBas['basis']])
+
 
     kernelVals=kernel(xp,yp,nx=xpnormals,ny=ypnormals)
     t1=ftx*xpdet*kernelVals*w
     t2=fty*ypdet
     return numpy.dot(t1,t2.T)
+
+
+
 
 def assembleSegment(eTest,meshToBasis,kernel,quadRule=None,forceQuadRule=None):
     """Assemble the rows of the matrix associated with the test functions on
@@ -132,6 +148,32 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
     return kernelMatrix
 
 
+def assembleIdentity(meshToBasis,quadRule):
+    """Assemble the Identity Matrix in the given basis"""
+
+    from kernels import Identity
+
+    nbasis=meshToBasis.nbasis
+    nelements=meshToBasis.nelements
+    result=numpy.zeros((nbasis,nbasis),dtype=numpy.complex128)
+    x,w=quadRule.regQuad['x'],quadRule.regQuad['w']
+    kernel=Identity()
+
+    for i,elem in enumerate(meshToBasis):
+        block=assembleElement(elem,elem,kernel,forceQuadRule=(x,w))
+        result[numpy.ix_(elem['basIds'],elem['basIds'])]=block
+    return result
+
+def projRhs(meshToBasis,fun,quadRule):
+    """Project the function fun onto the basis defined by meshToBasis"""
+
+    nbasis=meshToBasis.nbasis
+    nelements=meshToBasis.nelements
+
+    x,w=regQuad['x'],regQuad['w']
+
+    result=numpy.zeros(nbasis,dtype=numpy.complex128)
+
 
 if  __name__ == "__main__":
 
@@ -146,13 +188,14 @@ if  __name__ == "__main__":
     mesh=Mesh([d])
     mesh.discretize(100)
     quadrule=GaussQuadrature(5,2,0.15)
-    mToB=Legendre.legendreBasis(mesh,2)
+    mToB=Legendre.legendreBasis(mesh,0)
     kernel=AcousticDoubleLayer(5)
     matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
+    identity=assembleIdentity(mToB,quadrule)
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
-    #fig=plt.plot(numpy.real(matrix[0,:]))
-    fig=plt.imshow(numpy.log(numpy.abs(matrix)),cmap=cm.jet,aspect='equal')
+    fig=plt.plot(numpy.real(numpy.diag(identity)))
+    #fig=plt.imshow(numpy.log(numpy.abs(identity)),cmap=cm.jet,aspect='equal')
     plt.show()
 
 
