@@ -5,6 +5,7 @@ Created on Dec 11, 2010
 '''
 import numpy as np
 from scipy.integrate import quad,odeint
+import copy
 
 def absderiv(fp,view):
     def absderivfun(t):
@@ -33,15 +34,21 @@ class Segment(object):
 
     """
     
-    def __init__(self,f,fp,view=(0,1)):
-        self.f=f
-        self.fp=fp
+    def __init__(self,view=(0,1)):
         self.view=view
         
         # Compute length of segment
+       
+
+    def length(self):   
+        return quad(absderiv(self.fp,self.view),0,1)[0]
         
-        self.L=quad(absderiv(fp,view),0,1)[0]
-        
+    def f(self,t):
+        pass
+
+    def fp(self,t):
+        pass
+
     def vals(self,t):
         return self.f(self.view[0]+t*(self.view[1]-self.view[0]))
     
@@ -53,8 +60,6 @@ class Segment(object):
     def det(self,t):
         vals=(self.view[1]-self.view[0])*self.fp(self.view[0]+t*(self.view[1]-self.view[0]))
         return np.sqrt(np.abs(vals[0,:])**2+np.abs(vals[1,:])**2)
-
-    length=property(lambda self: self.L)
 
 
 def subdivide(seg,n,k=None,nmin=10):
@@ -73,13 +78,18 @@ def subdivide(seg,n,k=None,nmin=10):
     """
     
     if k is not None: n=max(1.0*k*seg.L/2/np.pi,nmin)
-    lvec=seg.L*np.arange(n,dtype='double')/n
+    lvec=seg.length()*np.arange(n,dtype='double')/n
     f= absderiv(seg.fp,seg.view)
     invabsderiv=lambda t,x: 1./f(t)
     t=odeint(invabsderiv,0,lvec).ravel()
     segs=[]
-    for i in range(n-1): segs.append(Segment(seg.f,seg.fp,(seg.view[0]+t[i]*(seg.view[1]-seg.view[0]),seg.view[0]+(seg.view[1]-seg.view[0])*t[i+1])))
-    segs.append(Segment(seg.f,seg.fp,(seg.view[0]+t[n-1]*(seg.view[1]-seg.view[0]),seg.view[1])))
+    for i in range(n-1):
+        dup=copy.deepcopy(seg)
+        dup.view=(seg.view[0]+t[i]*(seg.view[1]-seg.view[0]),seg.view[0]+(seg.view[1]-seg.view[0])*t[i+1])
+        segs.append(dup)
+    dup=copy.deepcopy(seg)
+    dup.view=(seg.view[0]+t[n-1]*(seg.view[1]-seg.view[0]),seg.view[1])
+    segs.append(dup)
     return segs
         
     
@@ -93,36 +103,59 @@ class Line(Segment):
         
            line(a,b) returns a line segment between a and b           
         """
-        f= lambda t: np.vstack([a[0]+t*(b[0]-a[0]),a[1]+t*(b[1]-a[1])])
-        fp = lambda t: np.vstack([[b[0]-a[0]],[b[1]-a[1]]])
-        super(Line,self).__init__(f,fp)
-        
+
+        self.a=a
+        self.b=b
+
+        super(Line,self).__init__()
+
+    def f(self,t): 
+        return np.vstack([self.a[0]+t*(self.b[0]-self.a[0]),self.a[1]+t*(self.b[1]-self.a[1])])
+
+    def fp(self,t): 
+        return np.vstack([[self.b[0]-self.a[0]],[self.b[1]-self.a[1]]])
+       
+
+
 class Arc(Segment):
     """Define an arc segment
     """
     
-    def __init__(self,x0,y0,a,b):
+    def __init__(self,x0,y0,a,b,r):
         """Define an arc segment
         
            Input:
            x0,y0 - Coordinates of centre point
            a - start angle in radians
            b - final angle in radians
-           
+           r - radius 
            A circle is created with the call arc(0,0,0,2*pi)
         """
+    
+
+        self.x0=x0
+        self.y0=y0
+        self.a=a
+        self.b=b
+        self.r=r
+
+    
+        super(Arc,self).__init__()
+
+    def f(self,t):
+        return np.vstack([self.x0+self.r*np.cos(self.a+t*(self.b-self.a)),self.y0+self.r*np.sin(self.a+t*(self.b-self.a))])
         
-        f = lambda t: np.vstack([x0+np.cos(a+t*(b-a)),y0+np.sin(a+t*(b-a))])
-        fp= lambda t: (b-a)*np.vstack([-np.sin(a+t*(b-a)),np.cos(a+t*(b-a))])
-        super(Arc,self).__init__(f,fp)
+    def fp(self,t):
+        return (self.b-self.a)*np.vstack([-self.r*np.sin(self.a+t*(self.b-self.a)),self.r*np.cos(self.a+t*(self.b-self.a))])
+        
         
         
 if __name__ == "__main__":
     
-    circle=Arc(0,0,0,np.pi)
-    print circle.L
+    circle=Arc(0,0,0,np.pi,1)
+    print circle.length()
     segs=subdivide(circle,10)
     print len(segs)
-    print segs[0].view,segs[0].L,segs[0].vals(np.array([1]))
+    print segs[0].view,segs[0].length(),segs[0].vals(np.array([1]))
     segs2=subdivide(segs[0],10)
-    print segs2[0].view,segs2[0].L,segs2[0].vals(np.array([1]))
+    print segs2[0].view,segs2[0].length(),segs2[0].vals(np.array([1]))

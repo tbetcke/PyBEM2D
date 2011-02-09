@@ -1,4 +1,6 @@
-from multiprocessing import Process, Queue
+from Queue import Empty
+from multiprocessing import Process, Queue, cpu_count
+from progressbar import ProgressBar, Percentage, Bar, ETA
 import numpy
 
 
@@ -34,7 +36,6 @@ def assembleElement(eTest,eBas,kernel,quadRule=None,forceQuadRule=None):
         x,w=forceQuadRule[0],forceQuadRule[1]
     #Evaluate the quadrature
 
-    print x
     ftx=numpy.array([f(x[0]) for f in eTest['basis']]).conj()
     fty=numpy.array([f(x[1]) for f in eBas['basis']])
 
@@ -58,16 +59,16 @@ def assembleSegment(eTest,meshToBasis,kernel,quadRule=None,forceQuadRule=None):
 
     # Assign numpy array with the right size
 
-    result=numpy.zeros((eTest['nbas'],mesh.nbasis))
+    result=numpy.zeros((eTest['nbas'],meshToBasis.nbasis),dtype=numpy.complex128)
     for eBas in meshToBasis:
         result[:,eBas['basIds']]=assembleElement(eTest,eBas,kernel,quadRule,forceQuadRule)
     
     return (eTest['basIds'],result)
 
-def AssemblyWorker(Process):
+class AssemblyWorker(Process):
 
-    def  __init__(meshToBasis,inputQueue,outputQueue,kernel,quadRule=None,forceQuadRule=None):
-        super(Assembly,self).__init__()
+    def  __init__(self,meshToBasis,inputQueue,outputQueue,kernel,quadRule=None,forceQuadRule=None):
+        super(AssemblyWorker,self).__init__()
         self.meshToBasis=meshToBasis
         self.inputQueue=inputQueue
         self.outputQueue=outputQueue
@@ -75,36 +76,78 @@ def AssemblyWorker(Process):
         self.quadRule=quadRule
         self.forceQuadRule=forceQuadRule
 
-    def run():
-        while inputQueue.empty() is False:
+    def run(self):
+        while self.inputQueue.empty() is False:
             try:
-                eTest=inputQueue.get_nowait()
-                result=assembleSegment(eTest,meshToBasis,kernel,quadRule,forceQuadRule)
-                outputQueue.put(result)
-            except Queue.Empty:
+                eTest=self.inputQueue.get_nowait()
+                result=assembleSegment(eTest,self.meshToBasis,self.kernel,self.quadRule,self.forceQuadRule)
+                self.outputQueue.put(result)
+            except Empty:
                 pass
 
+def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=None):
+    """Assemble the discrete BEM matrix using the given kernel"""
+
+    if nprocs==None: nprocs=cpu_count()
+
+    nbasis=meshToBasis.nbasis
+    nelements=meshToBasis.nelements
+
+    # Initialize the Queues
+
+    inputQueue=Queue()
+    outputQueue=Queue()
+
+    #Initialize the results matrix
+
+    kernelMatrix=numpy.zeros((nbasis,nbasis),dtype=numpy.complex128)
+
+    # Fill the Input Queue
+
+    for eTest in meshToBasis: 
+        inputQueue.put(eTest)
+
+    # Create and start the workers
+
+    workers=[]
+
+    for id in range(nprocs):
+        worker=AssemblyWorker(meshToBasis,inputQueue,outputQueue,kernel,quadRule,forceQuadRule)
+        worker.start()
+        workers.append(worker)
+
+    # Pick up the results from the outputQueue
+
+    widgets=['Assemble matrix:', Percentage(),' ',Bar(),' ',ETA()]
+    pbar=ProgressBar(widgets=widgets,maxval=nelements).start()
+    for i in range(nelements):
+        id,data=outputQueue.get()
+        kernelMatrix[id,:]=data
+        pbar.update(i)
+
+    # Kill all processess
+
+    for worker in workers: worker.join()
 
 
-
-    
 
 
 if  __name__ == "__main__":
 
     from bases import ElementToBasis,Legendre
-    from segments import Line
+    from segments import Line,Arc
     from quadrules import GaussQuadrature
-    from kernels import Identity
+    from kernels import Identity,AcousticDoubleLayer
+    from mesh import Domain,Mesh
 
-    l1=Line((0,0),(1,0))
-    l2=Line((1,0),(1,1))
-    quadrule=GaussQuadrature(1,1,0.15)
+    circle=Arc(0,0,0,2*numpy.pi,1)
+    d=Domain([circle])
+    mesh=Mesh([d])
+    mesh.discretize(100)
+    quadrule=GaussQuadrature(5,2,0.15)
+    mToB=Legendre.legendreBasis(mesh,2)
+    kernel=AcousticDoubleLayer(5)
+    matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
 
-    eTest=ElementToBasis(l1,0,0,2,2)
-    eTest.addBasis(Legendre(0),0)
-    eBas=ElementToBasis(l2,0,1,2,2)
-    eBas.addBasis(Legendre(0),1)
-    print assembleElement(eTest,eBas,Identity(),quadrule=quadrule)
-    
+    print "Finished" 
 

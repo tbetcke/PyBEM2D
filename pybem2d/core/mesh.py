@@ -10,7 +10,7 @@ class Domain(object):
 
     def __init__(self,seglist):
         self.seglist=seglist
-        self.L=sum([s.L for s in seglist])
+        self.L=sum([s.length() for s in seglist])
 
     def discretize(self,N,k=None,nmin=10):
         return sum([subdivide(s,N,k,nmin) for s in self.seglist],[])
