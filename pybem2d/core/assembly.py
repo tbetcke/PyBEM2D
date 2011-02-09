@@ -128,7 +128,8 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
     # Kill all processess
 
     for worker in workers: worker.join()
-
+    
+    return kernelMatrix
 
 
 
@@ -148,6 +149,12 @@ if  __name__ == "__main__":
     mToB=Legendre.legendreBasis(mesh,2)
     kernel=AcousticDoubleLayer(5)
     matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+    #fig=plt.plot(numpy.real(matrix[0,:]))
+    fig=plt.imshow(numpy.log(numpy.abs(matrix)),cmap=cm.jet,aspect='equal')
+    plt.show()
+
 
     print "Finished" 
 
