@@ -31,6 +31,9 @@ class MeshToBasis(object):
     def __iter__(self):
         for i in self.meshToBasis: yield i
 
+    def __getitem__(self,index):
+        return self.meshToBasis[index]
+
     def addBasis(self,basis):
         for e in self.meshToBasis:
             e.addBasis(basis,self.nb)

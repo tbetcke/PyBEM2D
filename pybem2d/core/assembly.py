@@ -12,10 +12,10 @@ def integrate1D(elem,funs,quadRule):
     xpdet=elem['segment'].det(x)
     xpnormals=elem['segment'].normals(x)
 
-    ftx=numpy.array([f(x,xp,xpnormals) for f in elem['basis']]).conj()
-    fty=numpy.array([f(x,xp,xpnormals) for f in funs]).T
+    f1tx=numpy.array([f(x,xp,xpnormals) for f in elem['basis']]).conj()
+    f2tx=numpy.array([f(x,xp,xpnormals) for f in funs]).T
 
-    return numpy.dot(ftx*xpdet*w,fty*ypdet)
+    return numpy.dot(f1tx*xpdet*w,f2tx)
 
 def assembleElement(eTest,eBas,kernel,quadRule=None,forceQuadRule=None):
     """Assemble the submatrix associated with two elements eTest, eBas using the
@@ -151,16 +151,12 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
 def assembleIdentity(meshToBasis,quadRule):
     """Assemble the Identity Matrix in the given basis"""
 
-    from kernels import Identity
-
     nbasis=meshToBasis.nbasis
     nelements=meshToBasis.nelements
     result=numpy.zeros((nbasis,nbasis),dtype=numpy.complex128)
-    x,w=quadRule.regQuad['x'],quadRule.regQuad['w']
-    kernel=Identity()
 
-    for i,elem in enumerate(meshToBasis):
-        block=assembleElement(elem,elem,kernel,forceQuadRule=(x,w))
+    for elem in meshToBasis:
+        block=integrate1D(elem,elem['basis'],quadRule)
         result[numpy.ix_(elem['basIds'],elem['basIds'])]=block
     return result
 
@@ -170,10 +166,11 @@ def projRhs(meshToBasis,fun,quadRule):
     nbasis=meshToBasis.nbasis
     nelements=meshToBasis.nelements
 
-    x,w=regQuad['x'],regQuad['w']
-
     result=numpy.zeros(nbasis,dtype=numpy.complex128)
+    for elem in meshToBasis:
+        result[elem['basIds']]=integrate1D(elem,fun,quadRule)
 
+    return result
 
 if  __name__ == "__main__":
 
@@ -186,18 +183,19 @@ if  __name__ == "__main__":
     circle=Arc(0,0,0,2*numpy.pi,1)
     d=Domain([circle])
     mesh=Mesh([d])
-    mesh.discretize(100)
-    quadrule=GaussQuadrature(5,2,0.15)
-    mToB=Legendre.legendreBasis(mesh,0)
+    mesh.discretize(5)
+    quadrule=GaussQuadrature(3,2,0.15)
+    mToB=Legendre.legendreBasis(mesh,2)
     kernel=AcousticDoubleLayer(5)
     matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
     identity=assembleIdentity(mToB,quadrule)
+    res=projRhs(mToB,[lambda t,x,normals: numpy.ones(x.shape[1])],quadrule)
+    print res
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
-    fig=plt.plot(numpy.real(numpy.diag(identity)))
+    #fig=plt.plot(numpy.real(identity[-1,:]))
     #fig=plt.imshow(numpy.log(numpy.abs(identity)),cmap=cm.jet,aspect='equal')
-    plt.show()
-
+    #plt.show()
 
     print "Finished" 
 
