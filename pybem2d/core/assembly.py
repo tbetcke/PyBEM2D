@@ -177,25 +177,31 @@ if  __name__ == "__main__":
     from bases import ElementToBasis,Legendre
     from segments import Line,Arc
     from quadrules import GaussQuadrature
-    from kernels import Identity,AcousticDoubleLayer
+    from kernels import Identity,AcousticDoubleLayer, AcousticSingleLayer
     from mesh import Domain,Mesh
 
-    circle=Arc(0,0,0,2*numpy.pi,1)
-    d=Domain([circle])
+    l1=Line((0,0),(1,0))
+    l2=Line((1,0),(1,1))
+    l3=Line((1,1),(0,1))
+    l4=Line((0,1),(0,0))
+    circle=Arc(0,0,0,numpy.pi,1)
+    l5=Line((-1,0),(1,0))
+    d=Domain([circle,l5])
+    d2=Domain([l1,l2,l3,l4])
     mesh=Mesh([d])
-    mesh.discretize(5)
-    quadrule=GaussQuadrature(3,2,0.15)
+    mesh.discretize(100)
+    quadrule=GaussQuadrature(4,2,0.15)
     mToB=Legendre.legendreBasis(mesh,2)
-    kernel=AcousticDoubleLayer(5)
+    kernel=AcousticSingleLayer(1)
     matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
     identity=assembleIdentity(mToB,quadrule)
-    res=projRhs(mToB,[lambda t,x,normals: numpy.ones(x.shape[1])],quadrule)
+    res=projRhs(mToB,[lambda t,x,normals: numpy.sin(x[0])],quadrule)
     print res
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
-    #fig=plt.plot(numpy.real(identity[-1,:]))
-    #fig=plt.imshow(numpy.log(numpy.abs(identity)),cmap=cm.jet,aspect='equal')
-    #plt.show()
+    #fig=plt.plot(numpy.abs(numpy.diag(identity)))
+    fig=plt.imshow(numpy.log(numpy.abs(matrix)),cmap=cm.jet,aspect='equal')
+    plt.show()
 
     print "Finished" 
 

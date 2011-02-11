@@ -32,7 +32,7 @@ class LogConjDoubleLayer(object):
 class AcousticSingleLayer(object):
     """Acoustic Single Layer Potential"""
 
-    def __init__(k):
+    def __init__(self,k):
         self.k=k
 
     def __call__(self,x,y,nx=None,ny=None):
