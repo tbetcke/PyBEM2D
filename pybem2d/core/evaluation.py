@@ -1,6 +1,6 @@
 import numpy
 from Queue import Empty
-from multiprocessing import Process, Queue, cpu_count, sharedctypes, Lock, Value
+from multiprocessing import Process, JoinableQueue, cpu_count, sharedctypes, Lock, Value
 from progressbar import ProgressBar, Percentage, Bar, ETA
 import time
 
@@ -23,15 +23,13 @@ class EvaluationWorker(Process):
         return numpy.dot(self.coeffs[elem['basIds']],fvals[:,0,:])
 
 
-    def  __init__(self,points,kernel,quadRule,coeffs,inputQueue,counter,counterlock,resVec):
+    def  __init__(self,points,kernel,quadRule,coeffs,inputQueue,resVec):
         super(EvaluationWorker,self).__init__()
         self.points=points
         self.kernel=kernel
         self.quadRule=quadRule
         self.coeffs=coeffs
         self.inputQueue=inputQueue
-        self.counter=counter
-        self.counterlock=counterlock
         self.resVec=resVec
 
     def run(self,):
@@ -39,8 +37,7 @@ class EvaluationWorker(Process):
             try:
                 elem=self.inputQueue.get_nowait()
                 self.resVec+=self.evaluate(elem)
-                with self.counterlock:
-                    self.counter.value+=1
+                self.inputQueue.task_done()
             except Empty:
                 pass
 
@@ -50,14 +47,11 @@ def evaluate(points,meshToBasis,kernel,quadRule,coeffs,nprocs=None):
 
     if nprocs==None: nprocs=cpu_count()
 
-    inputQueue=Queue()
-    counter=Value('i',0)
-    counterlock=Lock()
+    inputQueue=JoinableQueue()
 
     nelements=meshToBasis.nelements
 
     for elem in meshToBasis: inputQueue.put(elem)
-    time.sleep(1)
 
     buf=sharedctypes.RawArray('b',len(points[0])*numpy.dtype(numpy.complex128).itemsize)
     result=numpy.frombuffer(buf,dtype=numpy.complex128)
@@ -66,19 +60,12 @@ def evaluate(points,meshToBasis,kernel,quadRule,coeffs,nprocs=None):
     workers=[]
 
     for id in range(nprocs):
-        worker=EvaluationWorker(points,kernel,quadRule,coeffs,inputQueue,counter,counterlock,result)
+        worker=EvaluationWorker(points,kernel,quadRule,coeffs,inputQueue,result)
         worker.start()
         workers.append(worker)
 
-    widgets=['Evaluation:', Percentage(),' ',Bar(),' ',ETA()]
-    pbar=ProgressBar(widgets=widgets,maxval=nelements).start()
-    i=0
-    while i<nelements-1:
-        with counterlock:
-            i=counter.value
-            pbar.update(i)
-            time.sleep(.1)
 
+    inputQueue.join()
     for worker in workers: worker.join()
 
     return result.copy()

@@ -1,5 +1,5 @@
 from Queue import Empty
-from multiprocessing import Process, Queue, cpu_count, sharedctypes, Value, Lock
+from multiprocessing import Process, Queue, cpu_count, sharedctypes, Value, Lock, JoinableQueue
 from progressbar import ProgressBar, Percentage, Bar, ETA
 import numpy
 import time
@@ -84,12 +84,10 @@ def assembleSegment(eTest,meshToBasis,kernel,quadRule=None,forceQuadRule=None):
 
 class AssemblyWorker(Process):
 
-    def  __init__(self,meshToBasis,inputQueue,counter,counterlock,resMatrix,kernel,quadRule=None,forceQuadRule=None):
+    def  __init__(self,meshToBasis,inputQueue,resMatrix,kernel,quadRule=None,forceQuadRule=None):
         super(AssemblyWorker,self).__init__()
         self.meshToBasis=meshToBasis
         self.inputQueue=inputQueue
-        self.counter=counter
-        self.counterlock=counterlock
         self.kernel=kernel
         self.quadRule=quadRule
         self.forceQuadRule=forceQuadRule
@@ -101,8 +99,7 @@ class AssemblyWorker(Process):
                 eTest=self.inputQueue.get_nowait()
                 result=assembleSegment(eTest,self.meshToBasis,self.kernel,self.quadRule,self.forceQuadRule)
                 self.resMatrix[eTest['basIds'],:]=result
-                with self.counterlock:
-                    self.counter.value+=1
+                self.inputQueue.task_done()
             except Empty:
                 pass
 
@@ -116,11 +113,8 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
 
     # Initialize the Queues
 
-    inputQueue=Queue()
-    #outputQueue=Queue()
+    inputQueue=JoinableQueue()
 
-    counter=Value('i',0)
-    counterlock=Lock()
 
     #Initialize shared buffer
 
@@ -133,29 +127,19 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
     for eTest in meshToBasis: 
         inputQueue.put(eTest)
 
-    time.sleep(1)
     # Create and start the workers
 
     workers=[]
 
     for id in range(nprocs):
-        worker=AssemblyWorker(meshToBasis,inputQueue,counter,counterlock,resMatrix,kernel,quadRule,forceQuadRule)
+        worker=AssemblyWorker(meshToBasis,inputQueue,resMatrix,kernel,quadRule,forceQuadRule)
         worker.start()
         workers.append(worker)
 
-    # Pick up the results from the outputQueue
-
-    widgets=['Assemble matrix:', Percentage(),' ',Bar(),' ',ETA()]
-    pbar=ProgressBar(widgets=widgets,maxval=nelements).start()
-    i=0
-    while i<nelements-1:
-        with counterlock:
-            i=counter.value
-            pbar.update(i)
-            time.sleep(.1)
 
     # Kill all processess
 
+    inputQueue.join()
     for worker in workers: worker.join()
     
     return resMatrix.copy() 
