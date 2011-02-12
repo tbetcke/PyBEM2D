@@ -2,6 +2,7 @@ import numpy
 from Queue import Empty
 from multiprocessing import Process, Queue, cpu_count
 from progressbar import ProgressBar, Percentage, Bar, ETA
+import time
 
 class EvaluationWorker(Process):
 
@@ -52,7 +53,7 @@ def evaluate(points,meshToBasis,kernel,quadRule,coeffs,nprocs=None):
     nelements=meshToBasis.nelements
 
     for elem in meshToBasis: inputQueue.put(elem)
-
+    time.sleep(1)
     result=numpy.zeros(len(points[0]),dtype=numpy.complex128)
 
     workers=[]
@@ -81,22 +82,33 @@ if  __name__ == "__main__":
     from quadrules import GaussQuadrature
     from kernels import Identity,AcousticDoubleLayer
     from mesh import Domain,Mesh
+    from assembly import assembleIdentity, assembleMatrix, projRhs, assembleElement
 
+    k=10
     circle=Arc(0,0,0,2*numpy.pi,1)
     d=Domain([circle])
     mesh=Mesh([d])
-    mesh.discretize(900)
-    quadrule=GaussQuadrature(3,2,0.15)
+    mesh.discretize(100)
+    quadrule=GaussQuadrature(5,3,0.15)
     mToB=Legendre.legendreBasis(mesh,0)
-    kernel=AcousticDoubleLayer(10)
-    gx,gy=numpy.mgrid[-2:2:100j,-2:2:100j]
+    kernel=AcousticDoubleLayer(k)
+
+    matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
+    print matrix[0,0],matrix[1,0],matrix[2,0]
+    identity=assembleIdentity(mToB,quadrule)
+
+
+    rhs=projRhs(mToB,[lambda t,x,normals: numpy.exp(1j*k*x[0])],quadrule)
+    coeffs=numpy.linalg.solve(.5*identity+matrix,rhs)
+    
+
+    gx,gy=numpy.mgrid[-2:2:203j,-2:2:203j]
     points=numpy.array([gx.ravel(),gy.ravel()])
-    coeffs=numpy.ones(mToB.nbasis)
     res=evaluate(points,mToB,kernel,quadrule,coeffs)
     import matplotlib.pyplot as plt
     import matplotlib.cm as cm
     #fig=plt.plot(numpy.real(identity[-1,:]))
-    fig=plt.imshow(numpy.real(res.reshape(100,100)),cmap=cm.jet,aspect='equal')
+    fig=plt.imshow(numpy.real(res.reshape(203,203)),aspect='equal')
     plt.show()
 
    

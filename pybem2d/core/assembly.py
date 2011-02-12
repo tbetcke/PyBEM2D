@@ -2,6 +2,7 @@ from Queue import Empty
 from multiprocessing import Process, Queue, cpu_count
 from progressbar import ProgressBar, Percentage, Bar, ETA
 import numpy
+import time
 
 def integrate1D(elem,funs,quadRule):
     """One dimensional integration routine""" 
@@ -38,13 +39,13 @@ def assembleElement(eTest,eBas,kernel,quadRule=None,forceQuadRule=None):
             x,w=quadrule.reqQuad['x'],quadRule.regQuad['w']
         else:
             if (segId1==segId2):
-                x,w=quadrule.elemQuad['x'],quadRule.elemQuad['w']
+                x,w=quadRule.elemQuad['x'],quadRule.elemQuad['w']
             elif (eTest['next']==segId2):
-                x,w=quadrule.sing10['x'],quadRule.sing10['w']
+                x,w=quadRule.sing10['x'],quadRule.sing10['w']
             elif (eTest['prev']==segId2):
-                x,w=quadrule.sing01['x'],quadRule.sing01['w']
+                x,w=quadRule.sing01['x'],quadRule.sing01['w']
             else:
-                x,w=quadrule.regQuad['x'],quadRule.regQuad['w']
+                x,w=quadRule.regQuad['x'],quadRule.regQuad['w']
     else:
         x,w=forceQuadRule[0],forceQuadRule[1]
     #Evaluate the quadrature
@@ -123,6 +124,7 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
     for eTest in meshToBasis: 
         inputQueue.put(eTest)
 
+    time.sleep(1)
     # Create and start the workers
 
     workers=[]
@@ -180,18 +182,12 @@ if  __name__ == "__main__":
     from kernels import Identity,AcousticDoubleLayer, AcousticSingleLayer
     from mesh import Domain,Mesh
 
-    l1=Line((0,0),(1,0))
-    l2=Line((1,0),(1,1))
-    l3=Line((1,1),(0,1))
-    l4=Line((0,1),(0,0))
-    circle=Arc(0,0,0,numpy.pi,1)
-    l5=Line((-1,0),(1,0))
-    d=Domain([circle,l5])
-    d2=Domain([l1,l2,l3,l4])
+    circle=Arc(0,0,0,2*numpy.pi,1)
+    d=Domain([circle])
     mesh=Mesh([d])
     mesh.discretize(100)
     quadrule=GaussQuadrature(4,2,0.15)
-    mToB=Legendre.legendreBasis(mesh,2)
+    mToB=Legendre.legendreBasis(mesh,0)
     kernel=AcousticSingleLayer(1)
     matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
     identity=assembleIdentity(mToB,quadrule)

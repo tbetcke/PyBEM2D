@@ -36,7 +36,7 @@ class AcousticSingleLayer(object):
         self.k=k
 
     def __call__(self,x,y,nx=None,ny=None):
-        return hankel1(0,self.k*absdiff(x,y))
+        return 1j/4*hankel1(0,self.k*absdiff(x,y))
 
 class AcousticDoubleLayer(object):
     """Acoustic Double Layer Potential"""
@@ -47,7 +47,7 @@ class AcousticDoubleLayer(object):
     def __call__(self,x,y,nx=None,ny=None):
         w=y-x
         a=sqrt(w[0]**2+w[1]**2)
-        return -self.k*hankel1(1,self.k*a)*(ny[0]*w[0]+ny[1]*w[1])/a
+        return -self.k*1j/4*hankel1(1,self.k*a)*(ny[0]*w[0]+ny[1]*w[1])/a
 
 class AcousticConjDoubleLayer(object):
     """Acoustic Conjugate Double Layer Potential"""
@@ -58,7 +58,7 @@ class AcousticConjDoubleLayer(object):
     def __call__(self,x,y,nx=None,ny=None):
         w=x-y
         a=sqrt(w[0]**2+w[1]**2)
-        return -self.k*hankel1(1,self.k*a)*(nx[0]*w[0]+nx[1]*w[1])/a
+        return -self.k*1j/4*hankel1(1,self.k*a)*(nx[0]*w[0]+nx[1]*w[1])/a
 
 class Identity(object):
 

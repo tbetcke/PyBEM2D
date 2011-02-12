@@ -55,7 +55,8 @@ class Segment(object):
     def normals(self,t):
         vals=(self.view[1]-self.view[0])*self.fp(self.view[0]+t*(self.view[1]-self.view[0]))
         n=np.vstack([vals[1,:],-vals[0,:]])
-        return n
+        nl=np.sqrt(n[0,:]**2+n[1,:]**2)
+        return n/nl
     
     def det(self,t):
         vals=(self.view[1]-self.view[0])*self.fp(self.view[0]+t*(self.view[1]-self.view[0]))
