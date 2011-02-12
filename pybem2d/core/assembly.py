@@ -162,17 +162,38 @@ def assembleIdentity(meshToBasis,quadRule):
         result[numpy.ix_(elem['basIds'],elem['basIds'])]=block
     return result
 
-def projRhs(meshToBasis,fun,quadRule):
-    """Project the function fun onto the basis defined by meshToBasis"""
+def projFun(meshToBasis,fun,quadRule):
+    """Project the functions in the list fun onto the basis defined by meshToBasis"""
 
     nbasis=meshToBasis.nbasis
     nelements=meshToBasis.nelements
 
-    result=numpy.zeros(nbasis,dtype=numpy.complex128)
+    result=numpy.zeros((nbasis,len(fun)),dtype=numpy.complex128)
     for elem in meshToBasis:
         result[elem['basIds']]=integrate1D(elem,fun,quadRule)
 
     return result
+
+class Assembly(object):
+
+    def __init__(self,meshToBasis,quadRule,nprocs=None):
+        self.meshToBasis=meshToBasis
+        self.quadRule=quadRule
+        self.nprocs=nprocs
+
+    def getIdentity(self):
+        return assembleIdentity(self.meshToBasis,self.quadRule)
+
+    def getKernel(self,kernel):
+        return assembleMatrix(self.meshToBasis,kernel,self.quadRule,self.nprocs)
+
+    def projFun(self,flist):
+        return projFun(self.meshToBasis,flist,self.quadRule)
+
+
+
+
+
 
 if  __name__ == "__main__":
 

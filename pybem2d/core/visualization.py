@@ -70,9 +70,10 @@ if  __name__ == "__main__":
     from quadrules import GaussQuadrature
     from kernels import Identity,AcousticDoubleLayer
     from mesh import Domain,Mesh
-    from assembly import assembleIdentity, assembleMatrix, projRhs, assembleElement
+    from assembly import Assembly
     from evaluation import Evaluator
-
+    from scipy.io import savemat
+    
 
     k=10
     circle=Arc(0,0,0,2*numpy.pi,.5)
@@ -85,15 +86,19 @@ if  __name__ == "__main__":
     mToB=Legendre.legendreBasis(mesh,0)
     kernel=AcousticDoubleLayer(k)
 
-    matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
-    identity=assembleIdentity(mToB,quadrule)
-    rhs=projRhs(mToB,[lambda t,x,normals: -numpy.exp(1j*k*x[1])],quadrule)
+    assembly=Assembly(mToB,quadrule)
+    mKernel=assembly.getKernel(kernel)
+    mIdentity=assembly.getIdentity()
+    op=mIdentity+2*mKernel
+    savemat('circmatrix.mat',{'mat':op})
+    rhs=assembly.projFun([lambda t,x,normals: -numpy.exp(1j*k*x[1])])
+    print rhs.shape
 
-    coeffs=numpy.linalg.solve(.5*identity+matrix,rhs)
+    coeffs=numpy.linalg.solve(.5*mIdentity+mKernel,rhs)
    
     ev=Evaluator(mToB,kernel,quadrule)
     v=Visualizer(ev,[-2,4,-2,3],300,200,incWave=lambda x: numpy.exp(1j*k*x[1]))
-    v.scattField(coeffs)
+    v.scattField(coeffs[:,0])
     v.show()
 
 
