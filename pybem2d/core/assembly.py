@@ -1,5 +1,5 @@
 from Queue import Empty
-from multiprocessing import Process, Queue, cpu_count
+from multiprocessing import Process, Queue, cpu_count, sharedctypes
 from progressbar import ProgressBar, Percentage, Bar, ETA
 import numpy
 import time
@@ -80,11 +80,11 @@ def assembleSegment(eTest,meshToBasis,kernel,quadRule=None,forceQuadRule=None):
     for eBas in meshToBasis:
         result[:,eBas['basIds']]=assembleElement(eTest,eBas,kernel,quadRule,forceQuadRule)
     
-    return (eTest['basIds'],result)
+    return result
 
 class AssemblyWorker(Process):
 
-    def  __init__(self,meshToBasis,inputQueue,outputQueue,kernel,quadRule=None,forceQuadRule=None):
+    def  __init__(self,meshToBasis,inputQueue,outputQueue,resMatrix,kernel,quadRule=None,forceQuadRule=None):
         super(AssemblyWorker,self).__init__()
         self.meshToBasis=meshToBasis
         self.inputQueue=inputQueue
@@ -92,13 +92,16 @@ class AssemblyWorker(Process):
         self.kernel=kernel
         self.quadRule=quadRule
         self.forceQuadRule=forceQuadRule
+        self.resMatrix=resMatrix
 
     def run(self):
         while self.inputQueue.empty() is False:
             try:
                 eTest=self.inputQueue.get_nowait()
                 result=assembleSegment(eTest,self.meshToBasis,self.kernel,self.quadRule,self.forceQuadRule)
-                self.outputQueue.put(result)
+                self.resMatrix[eTest['basIds'],:]=result
+                self.outputQueue.put("DONE")
+
             except Empty:
                 pass
 
@@ -115,9 +118,11 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
     inputQueue=Queue()
     outputQueue=Queue()
 
-    #Initialize the results matrix
+    #Initialize shared buffer
 
-    kernelMatrix=numpy.zeros((nbasis,nbasis),dtype=numpy.complex128)
+    buf=sharedctypes.RawArray('b',nbasis*nbasis*numpy.dtype(numpy.complex128).itemsize)
+    resMatrix=numpy.frombuffer(buf,dtype=numpy.complex128)
+    resMatrix.shape=(nbasis,nbasis)
 
     # Fill the Input Queue
 
@@ -130,7 +135,7 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
     workers=[]
 
     for id in range(nprocs):
-        worker=AssemblyWorker(meshToBasis,inputQueue,outputQueue,kernel,quadRule,forceQuadRule)
+        worker=AssemblyWorker(meshToBasis,inputQueue,outputQueue,resMatrix,kernel,quadRule,forceQuadRule)
         worker.start()
         workers.append(worker)
 
@@ -139,15 +144,14 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
     widgets=['Assemble matrix:', Percentage(),' ',Bar(),' ',ETA()]
     pbar=ProgressBar(widgets=widgets,maxval=nelements).start()
     for i in range(nelements):
-        id,data=outputQueue.get()
-        kernelMatrix[id,:]=data
+        outputQueue.get()
         pbar.update(i)
 
     # Kill all processess
 
     for worker in workers: worker.join()
     
-    return kernelMatrix
+    return resMatrix.copy() 
 
 
 def assembleIdentity(meshToBasis,quadRule):

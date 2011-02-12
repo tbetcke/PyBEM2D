@@ -80,7 +80,7 @@ if  __name__ == "__main__":
     circle2=Arc(2,0,0,2*numpy.pi,.5)
     d=Domain([circle])
     d2=Domain([circle2])
-    mesh=Mesh([d,d2])
+    mesh=Mesh([d])
     mesh.discretize(100)
     quadrule=GaussQuadrature(5,3,0.15)
     mToB=Legendre.legendreBasis(mesh,0)
@@ -97,7 +97,7 @@ if  __name__ == "__main__":
     coeffs=numpy.linalg.solve(.5*mIdentity+mKernel,rhs)
    
     ev=Evaluator(mToB,kernel,quadrule)
-    v=Visualizer(ev,[-2,4,-2,3],300,200,incWave=lambda x: numpy.exp(1j*k*x[1]))
+    v=Visualizer(ev,[-2,2,-2,2],100,100,incWave=lambda x: numpy.exp(1j*k*x[1]))
     v.scattField(coeffs[:,0])
     v.show()
 

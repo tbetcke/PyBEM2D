@@ -1,6 +1,6 @@
 import numpy
 from Queue import Empty
-from multiprocessing import Process, Queue, cpu_count
+from multiprocessing import Process, Queue, cpu_count, sharedctypes
 from progressbar import ProgressBar, Percentage, Bar, ETA
 import time
 
@@ -23,7 +23,7 @@ class EvaluationWorker(Process):
         return numpy.dot(self.coeffs[elem['basIds']],fvals[:,0,:])
 
 
-    def __init__(self,points,kernel,quadRule,coeffs,inputQueue,outputQueue):
+    def  __init__(self,points,kernel,quadRule,coeffs,inputQueue,outputQueue,resVec):
         super(EvaluationWorker,self).__init__()
         self.points=points
         self.kernel=kernel
@@ -31,13 +31,14 @@ class EvaluationWorker(Process):
         self.coeffs=coeffs
         self.inputQueue=inputQueue
         self.outputQueue=outputQueue
+        self.resVec=resVec
 
     def run(self,):
         while self.inputQueue.empty() is False:
             try:
                 elem=self.inputQueue.get_nowait()
-                result=self.evaluate(elem)
-                self.outputQueue.put(result)
+                self.resVec+=self.evaluate(elem)
+                self.outputQueue.put("DONE")
             except Empty:
                 pass
 
@@ -54,24 +55,27 @@ def evaluate(points,meshToBasis,kernel,quadRule,coeffs,nprocs=None):
 
     for elem in meshToBasis: inputQueue.put(elem)
     time.sleep(1)
-    result=numpy.zeros(len(points[0]),dtype=numpy.complex128)
+
+    buf=sharedctypes.RawArray('b',len(points[0])*numpy.dtype(numpy.complex128).itemsize)
+    result=numpy.frombuffer(buf,dtype=numpy.complex128)
+    result[:]=numpy.zeros(1,dtype=numpy.complex128)
 
     workers=[]
 
     for id in range(nprocs):
-        worker=EvaluationWorker(points,kernel,quadRule,coeffs,inputQueue,outputQueue)
+        worker=EvaluationWorker(points,kernel,quadRule,coeffs,inputQueue,outputQueue,result)
         worker.start()
         workers.append(worker)
 
     widgets=['Evaluation:', Percentage(),' ',Bar(),' ',ETA()]
     pbar=ProgressBar(widgets=widgets,maxval=nelements).start()
     for i in range(nelements): 
-        result+=outputQueue.get()
+        outputQueue.get()
         pbar.update(i)
 
     for worker in workers: worker.join()
 
-    return result
+    return result.copy()
 
 class Evaluator(object):
 
