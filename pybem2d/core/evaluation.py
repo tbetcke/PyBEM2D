@@ -1,6 +1,6 @@
 import numpy
 from Queue import Empty
-from multiprocessing import Process, Queue, cpu_count, sharedctypes
+from multiprocessing import Process, Queue, cpu_count, sharedctypes, Lock, Value
 from progressbar import ProgressBar, Percentage, Bar, ETA
 import time
 
@@ -23,14 +23,15 @@ class EvaluationWorker(Process):
         return numpy.dot(self.coeffs[elem['basIds']],fvals[:,0,:])
 
 
-    def  __init__(self,points,kernel,quadRule,coeffs,inputQueue,outputQueue,resVec):
+    def  __init__(self,points,kernel,quadRule,coeffs,inputQueue,counter,counterlock,resVec):
         super(EvaluationWorker,self).__init__()
         self.points=points
         self.kernel=kernel
         self.quadRule=quadRule
         self.coeffs=coeffs
         self.inputQueue=inputQueue
-        self.outputQueue=outputQueue
+        self.counter=counter
+        self.counterlock=counterlock
         self.resVec=resVec
 
     def run(self,):
@@ -38,7 +39,8 @@ class EvaluationWorker(Process):
             try:
                 elem=self.inputQueue.get_nowait()
                 self.resVec+=self.evaluate(elem)
-                self.outputQueue.put("DONE")
+                with self.counterlock:
+                    self.counter.value+=1
             except Empty:
                 pass
 
@@ -49,7 +51,8 @@ def evaluate(points,meshToBasis,kernel,quadRule,coeffs,nprocs=None):
     if nprocs==None: nprocs=cpu_count()
 
     inputQueue=Queue()
-    outputQueue=Queue()
+    counter=Value('i',0)
+    counterlock=Lock()
 
     nelements=meshToBasis.nelements
 
@@ -63,15 +66,18 @@ def evaluate(points,meshToBasis,kernel,quadRule,coeffs,nprocs=None):
     workers=[]
 
     for id in range(nprocs):
-        worker=EvaluationWorker(points,kernel,quadRule,coeffs,inputQueue,outputQueue,result)
+        worker=EvaluationWorker(points,kernel,quadRule,coeffs,inputQueue,counter,counterlock,result)
         worker.start()
         workers.append(worker)
 
     widgets=['Evaluation:', Percentage(),' ',Bar(),' ',ETA()]
     pbar=ProgressBar(widgets=widgets,maxval=nelements).start()
-    for i in range(nelements): 
-        outputQueue.get()
-        pbar.update(i)
+    i=0
+    while i<nelements-1:
+        with counterlock:
+            i=counter.value
+            pbar.update(i)
+            time.sleep(.1)
 
     for worker in workers: worker.join()
 
