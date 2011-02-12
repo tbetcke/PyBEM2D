@@ -36,7 +36,7 @@ def assembleElement(eTest,eBas,kernel,quadRule=None,forceQuadRule=None):
 
     if forceQuadRule is None:
         if (domId1!=domId2):
-            x,w=quadrule.reqQuad['x'],quadRule.regQuad['w']
+            x,w=quadRule.regQuad['x'],quadRule.regQuad['w']
         else:
             if (segId1==segId2):
                 x,w=quadRule.elemQuad['x'],quadRule.elemQuad['w']
@@ -192,12 +192,8 @@ if  __name__ == "__main__":
     matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
     identity=assembleIdentity(mToB,quadrule)
     res=projRhs(mToB,[lambda t,x,normals: numpy.sin(x[0])],quadrule)
-    print res
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
+    
     #fig=plt.plot(numpy.abs(numpy.diag(identity)))
-    fig=plt.imshow(numpy.log(numpy.abs(matrix)),cmap=cm.jet,aspect='equal')
-    plt.show()
 
     print "Finished" 
 

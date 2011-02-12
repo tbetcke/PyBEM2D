@@ -20,7 +20,7 @@ class EvaluationWorker(Process):
         ker=numpy.array([self.kernel(self.points,y.reshape(2,1),ny=normals[:,i]) for (i,y) in
             enumerate(yp.T)])
         fvals=numpy.dot(f.reshape(len(elem['basis']),1,nx),ker)
-        return numpy.dot(coeffs[elem['basIds']],fvals[:,0,:])
+        return numpy.dot(self.coeffs[elem['basIds']],fvals[:,0,:])
 
 
     def __init__(self,points,kernel,quadRule,coeffs,inputQueue,outputQueue):
@@ -73,7 +73,17 @@ def evaluate(points,meshToBasis,kernel,quadRule,coeffs,nprocs=None):
 
     return result
 
-    
+class Evaluator(object):
+
+    def __init__(self,meshToBasis,kernel,quadRule,nprocs=None):
+        self.meshToBasis=meshToBasis
+        self.quadRule=quadRule
+        self.nprocs=nprocs
+        self.kernel=kernel
+
+    def __call__(self,points,coeffs):
+        return evaluate(points,self.meshToBasis,self.kernel,self.quadRule,coeffs,self.nprocs)
+
 
 if  __name__ == "__main__":
 
@@ -85,12 +95,14 @@ if  __name__ == "__main__":
     from assembly import assembleIdentity, assembleMatrix, projRhs, assembleElement
 
     k=10
-    circle=Arc(0,0,0,2*numpy.pi,1)
+    circle=Arc(0,0,0,2*numpy.pi,.5)
+    circle2=Arc(2,0,0,2*numpy.pi,.5)
     d=Domain([circle])
-    mesh=Mesh([d])
+    d2=Domain([circle2])
+    mesh=Mesh([d,d2])
     mesh.discretize(100)
     quadrule=GaussQuadrature(5,3,0.15)
-    mToB=Legendre.legendreBasis(mesh,0)
+    mToB=Legendre.legendreBasis(mesh,2)
     kernel=AcousticDoubleLayer(k)
 
     matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
@@ -98,19 +110,20 @@ if  __name__ == "__main__":
     identity=assembleIdentity(mToB,quadrule)
 
 
-    rhs=projRhs(mToB,[lambda t,x,normals: numpy.exp(1j*k*x[0])],quadrule)
+    rhs=projRhs(mToB,[lambda t,x,normals: -numpy.exp(1j*k*x[1])],quadrule)
     coeffs=numpy.linalg.solve(.5*identity+matrix,rhs)
     
 
-    gx,gy=numpy.mgrid[-2:2:203j,-2:2:203j]
+    gx,gy=numpy.mgrid[-2:4:200j,-2:2:200j]
     points=numpy.array([gx.ravel(),gy.ravel()])
     res=evaluate(points,mToB,kernel,quadrule,coeffs)
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-    #fig=plt.plot(numpy.real(identity[-1,:]))
-    fig=plt.imshow(numpy.real(res.reshape(203,203)),aspect='equal')
-    plt.show()
-
+    res=res.reshape(200,200)
+    res+=numpy.exp(1j*k*gy)
+    from enthought.mayavi import mlab
+    mlab.imshow(gx,gy,numpy.real(res),vmin=-1,vmax=1)
+    mlab.axes()
+    mlab.view(0,0)
+    mlab.show()
    
     
 
