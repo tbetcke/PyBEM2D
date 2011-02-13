@@ -1,5 +1,5 @@
 from scipy.special import eval_sh_legendre
-
+from assembly import nodalProjector
 
 class ElementToBasis(object):
     """Element to basis map"""
@@ -28,6 +28,7 @@ class MeshToBasis(object):
                 range(len(mesh.segments[domId]))])
         self.nb=0
         self.m=mesh
+        self.P=None
 
     def __iter__(self):
         for i in self.meshToBasis: yield i
@@ -60,6 +61,7 @@ class NodalLin(object):
         mToB=MeshToBasis(mesh)
         mToB.addBasis(NodalLin(0))
         mToB.addBasis(NodalLin(1))
+        mToB.P=nodalProjector(mToB) 
         return mToB
 
 class Legendre(object):

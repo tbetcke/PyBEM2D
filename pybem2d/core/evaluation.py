@@ -73,12 +73,12 @@ def evaluate(points,meshToBasis,kernel,quadRule,coeffs,nprocs=None):
 
 class Evaluator(object):
 
-    def __init__(self,meshToBasis,kernel,quadRule,P=None,nprocs=None):
+    def __init__(self,meshToBasis,kernel,quadRule,nprocs=None):
         self.meshToBasis=meshToBasis
         self.quadRule=quadRule
         self.nprocs=nprocs
         self.kernel=kernel
-        self.P=P
+        self.P=meshToBasis.P
 
     def __call__(self,points,coeffs):
         if self.P is not None:

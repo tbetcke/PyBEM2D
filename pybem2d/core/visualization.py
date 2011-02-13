@@ -64,14 +64,15 @@ class Visualizer(object):
         self.f=mlab.figure()
 
 
-def plotBndFun(meshToBasis,coeffs,n=100,P=None):
+def plotBndFun(meshToBasis,coeffs,n=100):
     nelems=meshToBasis.nelements
     ndoms=len(meshToBasis.mesh.domains)
     segments=meshToBasis.mesh.segments
+    P=meshToBasis.P
     if P is not None:
         coeffs=numpy.dot(P.T,coeffs)
     ylist=[numpy.zeros(n*len(segments[i]),dtype=numpy.complex128) for i in range(ndoms)]
-    xvec=numpy.arange(n,dtype=numpy.complex128)/n
+    xvec=numpy.arange(n,dtype=numpy.double)/n
     ind=numpy.zeros(ndoms)
 
     for elem in meshToBasis:
@@ -110,23 +111,21 @@ if  __name__ == "__main__":
     d=Domain([circle])
     d2=Domain([circle2])
     mesh=Mesh([d,d2])
-    mesh.discretize(100)
+    mesh.discretize(3)
     quadrule=GaussQuadrature(5,3,0.15)
     #mToB=Legendre.legendreBasis(mesh,0)
     mToB=NodalLin.nodalLinBasis(mesh)
     kernel=AcousticDoubleLayer(k)
-    P=nodalProjector(mToB)
 
-    assembly=Assembly(mToB,quadrule,P=P)
+    assembly=Assembly(mToB,quadrule)
     mKernel=assembly.getKernel(kernel)
     mIdentity=assembly.getIdentity()
     op=mIdentity+2*mKernel
     rhs=assembly.projFun([lambda t,x,normals: -numpy.exp(1j*k*x[1])])
 
     coeffs=numpy.linalg.solve(.5*mIdentity+mKernel,rhs)
-   
-    plotBndFun(mToB,coeffs[:,0],P=P)
-    ev=Evaluator(mToB,kernel,quadrule,P=P)
+    plotBndFun(mToB,coeffs[:,0])
+    ev=Evaluator(mToB,kernel,quadrule)
     v=Visualizer(ev,[-1.5,3.5,-1,3],200,200,incWave=lambda x: numpy.exp(1j*k*x[1]))
     v.fullField(coeffs[:,0])
     v.show()

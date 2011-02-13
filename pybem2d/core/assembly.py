@@ -196,11 +196,11 @@ def nodalProjector(meshToBasis):
 
 class Assembly(object):
 
-    def __init__(self,meshToBasis,quadRule,nprocs=None,P=None):
+    def __init__(self,meshToBasis,quadRule,nprocs=None):
         self.meshToBasis=meshToBasis
         self.quadRule=quadRule
         self.nprocs=nprocs
-        self.P=P
+        self.P=meshToBasis.P
 
 
     def getIdentity(self):
