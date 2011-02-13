@@ -1,4 +1,4 @@
-from enthought.mayavi import mlab
+from matplotlib import pyplot as plt
 from evaluation import evaluate
 import numpy
 
@@ -8,7 +8,7 @@ class Visualizer(object):
     def __init__(self,evaluator,extent,xn,yn,incWave=None):
         self.evaluator=evaluator
         self.incWave=incWave
-        self.f=mlab.figure()
+        self.f=None
         self.setGrid(extent,xn,yn)
         
        
@@ -22,7 +22,6 @@ class Visualizer(object):
 
     def fullField(self,coeffs,imag=False,scale=1):
 
-        if self.f is None: self.f=mlab.figure()
         vals=self.evaluator(self.points,coeffs)
         full=vals+self.incWave(self.points)
         if imag is True:
@@ -32,36 +31,38 @@ class Visualizer(object):
             full=numpy.real(full.reshape(self.xn,self.yn))
             scatt=numpy.real(vals.reshape(self.xn,self.yn))
 
-        s1=mlab.imshow(self.gx,self.gy,scatt,vmin=-scale,vmax=scale,figure=self.f)
-        offset=1.5*(self.extent[3]-self.extent[2])
-        s2=mlab.imshow(self.gx,self.gy-offset,full,vmin=-scale,vmax=scale,figure=self.f)
-        ranges=[self.extent[0],self.extent[1],self.extent[2],self.extent[3],0,0]
-        mlab.axes(s1,ranges=ranges,zlabel='',y_axis_visibility=False)
-        mlab.axes(s2,ranges=ranges,zlabel='',y_axis_visibility=False)
-        mlab.view(0,0)
+
+        if self.f is not None:
+            plot.close()
+            self.f=plt.figure()
+        ax1=plt.subplot(1,2,1)
+        ax1.imshow(scatt.T,extent=self.extent,vmin=-scale,vmax=scale,origin='lower')
+        ax2=plt.subplot(1,2,2)
+        ax2.imshow(full.T,extent=self.extent,vmin=-scale,vmax=scale,origin='lower')
+        plt.show()
 
     def scattField(self,coeffs,imag=False,scale=1):
 
-        if self.f is None: self.f=mlab.figure()
         vals=self.evaluator(self.points,coeffs)
         if imag is True:
             scatt=numpy.imag(vals.reshape(self.xn,self.yn))
         else:
             scatt=numpy.imag(vals.reshape(self.xn,self.yn))
 
-        s=mlab.imshow(self.gx,self.gy,scatt,vmin=-scale,vmax=scale,figure=self.f)
-        mlab.axes(s,zlabel='',y_axis_visibility=False)
-        mlab.view(0,0)
+        if self.f is not None:
+            plot.close()
+            self.f=plt.figure()
+        plt.imshow(scatt.T,vmin=-scale,vmax=scale,origin='lower')
+        plt.show()
 
     def saveFig(self,filename):
-        mlab.savefig(filename,figure=self.f)
+        plt.savefig(filename)
 
     def show(self):
-        mlab.show()
+        plt.show()
 
-    def reset(self):
-        if self.f is not None: mlab.close()
-        self.f=mlab.figure()
+    def close(self):
+        if self.f is not None: plt.close()
 
 
 def plotBndFun(meshToBasis,coeffs,n=100):
@@ -86,7 +87,7 @@ def plotBndFun(meshToBasis,coeffs,n=100):
     fig=plt.figure()
     for i in range(ndoms):
         ax=fig.add_subplot(10*ndoms+100+i+1)
-        ax.plot(numpy.abs(ylist[i]))
+        ax.plot(numpy.real(ylist[i]))
     plt.show()
 
         
@@ -111,7 +112,7 @@ if  __name__ == "__main__":
     d=Domain([circle])
     d2=Domain([circle2])
     mesh=Mesh([d,d2])
-    mesh.discretize(3)
+    mesh.discretize(100)
     quadrule=GaussQuadrature(5,3,0.15)
     #mToB=Legendre.legendreBasis(mesh,0)
     mToB=NodalLin.nodalLinBasis(mesh)
@@ -121,12 +122,12 @@ if  __name__ == "__main__":
     mKernel=assembly.getKernel(kernel)
     mIdentity=assembly.getIdentity()
     op=mIdentity+2*mKernel
-    rhs=assembly.projFun([lambda t,x,normals: -numpy.exp(1j*k*x[1])])
+    rhs=assembly.projFun([lambda t,x,normals: -numpy.exp(1j*k*x[0])])
 
     coeffs=numpy.linalg.solve(.5*mIdentity+mKernel,rhs)
     plotBndFun(mToB,coeffs[:,0])
     ev=Evaluator(mToB,kernel,quadrule)
-    v=Visualizer(ev,[-1.5,3.5,-1,3],200,200,incWave=lambda x: numpy.exp(1j*k*x[1]))
+    v=Visualizer(ev,[-1.5,3.5,-1,3],200,200,incWave=lambda x: numpy.exp(1j*k*x[0]))
     v.fullField(coeffs[:,0])
     v.show()
 
