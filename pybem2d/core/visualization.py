@@ -63,16 +63,45 @@ class Visualizer(object):
         if self.f is not None: mlab.close()
         self.f=mlab.figure()
 
+
+def plotBndFun(meshToBasis,coeffs,n=100,P=None):
+    nelems=meshToBasis.nelements
+    ndoms=len(meshToBasis.mesh.domains)
+    segments=meshToBasis.mesh.segments
+    if P is not None:
+        coeffs=numpy.dot(P.T,coeffs)
+    ylist=[numpy.zeros(n*len(segments[i]),dtype=numpy.complex128) for i in range(ndoms)]
+    xvec=numpy.arange(n,dtype=numpy.complex128)/n
+    ind=numpy.zeros(ndoms)
+
+    for elem in meshToBasis:
+        xp=elem['segment'].vals(xvec)
+        normals=elem['segment'].normals(xvec)
+        t=numpy.array([f(xvec,xp,normals) for f in elem['basis']])
+        vals=numpy.dot(numpy.array(coeffs[elem['basIds']]),numpy.array([f(xvec,xp,normals) for f in elem['basis']]))
+        ylist[elem['domId']][n*ind[elem['domId']]:(ind[elem['domId']]+1)*n]=vals
+        ind[elem['domId']]+=1
+    import matplotlib.pyplot as plt
+    fig=plt.figure()
+    for i in range(ndoms):
+        ax=fig.add_subplot(10*ndoms+100+i+1)
+        ax.plot(numpy.abs(ylist[i]))
+    plt.show()
+
+        
+
+
+
+
 if  __name__ == "__main__":
 
-    from bases import ElementToBasis,Legendre
+    from bases import ElementToBasis,Legendre,NodalLin
     from segments import Line,Arc
     from quadrules import GaussQuadrature
     from kernels import Identity,AcousticDoubleLayer
     from mesh import Domain,Mesh
-    from assembly import Assembly
+    from assembly import Assembly, nodalProjector
     from evaluation import Evaluator
-    from scipy.io import savemat
     
 
     k=10
@@ -80,25 +109,26 @@ if  __name__ == "__main__":
     circle2=Arc(2,0,0,2*numpy.pi,.5)
     d=Domain([circle])
     d2=Domain([circle2])
-    mesh=Mesh([d])
+    mesh=Mesh([d,d2])
     mesh.discretize(100)
     quadrule=GaussQuadrature(5,3,0.15)
-    mToB=Legendre.legendreBasis(mesh,0)
+    #mToB=Legendre.legendreBasis(mesh,0)
+    mToB=NodalLin.nodalLinBasis(mesh)
     kernel=AcousticDoubleLayer(k)
+    P=nodalProjector(mToB)
 
-    assembly=Assembly(mToB,quadrule)
+    assembly=Assembly(mToB,quadrule,P=P)
     mKernel=assembly.getKernel(kernel)
     mIdentity=assembly.getIdentity()
     op=mIdentity+2*mKernel
-    savemat('circmatrix.mat',{'mat':op})
     rhs=assembly.projFun([lambda t,x,normals: -numpy.exp(1j*k*x[1])])
-    print rhs.shape
 
     coeffs=numpy.linalg.solve(.5*mIdentity+mKernel,rhs)
    
-    ev=Evaluator(mToB,kernel,quadrule)
-    v=Visualizer(ev,[-2,2,-2,2],100,100,incWave=lambda x: numpy.exp(1j*k*x[1]))
-    v.scattField(coeffs[:,0])
+    plotBndFun(mToB,coeffs[:,0],P=P)
+    ev=Evaluator(mToB,kernel,quadrule,P=P)
+    v=Visualizer(ev,[-1.5,3.5,-1,3],200,200,incWave=lambda x: numpy.exp(1j*k*x[1]))
+    v.fullField(coeffs[:,0])
     v.show()
 
 

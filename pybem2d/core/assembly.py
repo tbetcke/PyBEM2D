@@ -1,8 +1,8 @@
 from Queue import Empty
-from multiprocessing import Process, Queue, cpu_count, sharedctypes, Value, Lock, JoinableQueue
-from progressbar import ProgressBar, Percentage, Bar, ETA
+from multiprocessing import Process, Queue, cpu_count, sharedctypes, JoinableQueue
 import numpy
 import time
+from scipy.linalg import circulant
 
 def integrate1D(elem,funs,quadRule):
     """One dimensional integration routine""" 
@@ -128,7 +128,7 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
         inputQueue.put(eTest)
 
     # Create and start the workers
-
+    time.sleep(.5)
     workers=[]
 
     for id in range(nprocs):
@@ -169,21 +169,61 @@ def projFun(meshToBasis,fun,quadRule):
 
     return result
 
+def nodalProjector(meshToBasis):
+    """Create the projector onto a nodal basis"""
+
+    segments=meshToBasis.mesh.segments # List of segments in each domain
+    nsegs=[len(s) for s in segments] # Number of segments in each domain
+    ne=meshToBasis.nelements
+    nb=meshToBasis.nbasis
+
+    # Create local matrices
+    P1l,P2l=[],[]
+    for n in nsegs:
+        P2=numpy.eye(n,n,dtype=numpy.complex128)
+        P1=circulant(P2[:,1])
+        P1l.append(P1)
+        P2l.append(P2)
+    P=numpy.zeros((ne,nb),dtype=numpy.complex128)
+    ind1,ind2=0,ne
+    for i,n in enumerate(nsegs):
+        P[ind1:ind1+n,ind1:ind1+n]=P1l[i]
+        P[ind1:ind1+n,ind2:ind2+n]=P2l[i]
+        ind1+=n
+        ind2+=n
+    return P
+    
+
 class Assembly(object):
 
-    def __init__(self,meshToBasis,quadRule,nprocs=None):
+    def __init__(self,meshToBasis,quadRule,nprocs=None,P=None):
         self.meshToBasis=meshToBasis
         self.quadRule=quadRule
         self.nprocs=nprocs
+        self.P=P
+
 
     def getIdentity(self):
-        return assembleIdentity(self.meshToBasis,self.quadRule)
+            ident=assembleIdentity(self.meshToBasis,self.quadRule)
+            if self.P is not None:
+                return numpy.dot(self.P,numpy.dot(ident,self.P.T))
+            else:
+                return ident
+
 
     def getKernel(self,kernel):
-        return assembleMatrix(self.meshToBasis,kernel,self.quadRule,self.nprocs)
+            kMatrix=assembleMatrix(self.meshToBasis,kernel,self.quadRule,self.nprocs)
+            if self.P is not None:
+                return numpy.dot(self.P,numpy.dot(kMatrix,self.P.T))
+            else:
+                return kMatrix
 
     def projFun(self,flist):
-        return projFun(self.meshToBasis,flist,self.quadRule)
+            vec=projFun(self.meshToBasis,flist,self.quadRule)
+            if self.P is not None:
+                return numpy.dot(self.P,vec)
+            else:
+                return vec
 
 
 

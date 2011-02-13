@@ -27,7 +27,8 @@ class MeshToBasis(object):
                 for domId in range(len(mesh.segments)) for segId in
                 range(len(mesh.segments[domId]))])
         self.nb=0
-        
+        self.m=mesh
+
     def __iter__(self):
         for i in self.meshToBasis: yield i
 
@@ -41,9 +42,27 @@ class MeshToBasis(object):
 
     nelements=property(lambda self:len(self.meshToBasis))
     nbasis=property(lambda self: self.nb)
+    mesh=property(lambda self: self.m)
 
+class NodalLin(object):
+    """Piecewise linear basis functions for nodal basis"""
 
-class Legendre:
+    def __init__(self,n):
+        """n is 0 or 1 leading to t and 1-t as bas funs."""
+        self.n=n
+
+    def __call__(self,t,x=None,normal=None):
+        return (1-2*self.n)*t+self.n
+
+    @staticmethod
+    def nodalLinBasis(mesh):
+
+        mToB=MeshToBasis(mesh)
+        mToB.addBasis(NodalLin(0))
+        mToB.addBasis(NodalLin(1))
+        return mToB
+
+class Legendre(object):
     """Basis of Legendre Polynomials"""
 
     def __init__(self,n):

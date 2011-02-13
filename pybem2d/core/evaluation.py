@@ -1,8 +1,8 @@
 import numpy
 from Queue import Empty
-from multiprocessing import Process, JoinableQueue, cpu_count, sharedctypes, Lock, Value
-from progressbar import ProgressBar, Percentage, Bar, ETA
+from multiprocessing import Process, JoinableQueue, cpu_count, sharedctypes
 import time
+from scipy.linalg import circulant
 
 class EvaluationWorker(Process):
 
@@ -57,6 +57,7 @@ def evaluate(points,meshToBasis,kernel,quadRule,coeffs,nprocs=None):
     result=numpy.frombuffer(buf,dtype=numpy.complex128)
     result[:]=numpy.zeros(1,dtype=numpy.complex128)
 
+    time.sleep(.5)
     workers=[]
 
     for id in range(nprocs):
@@ -72,13 +73,16 @@ def evaluate(points,meshToBasis,kernel,quadRule,coeffs,nprocs=None):
 
 class Evaluator(object):
 
-    def __init__(self,meshToBasis,kernel,quadRule,nprocs=None):
+    def __init__(self,meshToBasis,kernel,quadRule,P=None,nprocs=None):
         self.meshToBasis=meshToBasis
         self.quadRule=quadRule
         self.nprocs=nprocs
         self.kernel=kernel
+        self.P=P
 
     def __call__(self,points,coeffs):
+        if self.P is not None:
+            coeffs=numpy.dot(self.P.T,coeffs)
         return evaluate(points,self.meshToBasis,self.kernel,self.quadRule,coeffs,self.nprocs)
 
 
@@ -96,14 +100,13 @@ if  __name__ == "__main__":
     circle2=Arc(2,0,0,2*numpy.pi,.5)
     d=Domain([circle])
     d2=Domain([circle2])
-    mesh=Mesh([d,d2])
-    mesh.discretize(100)
+    mesh=Mesh([d])
+    mesh.discretize(3)
     quadrule=GaussQuadrature(5,3,0.15)
     mToB=Legendre.legendreBasis(mesh,2)
     kernel=AcousticDoubleLayer(k)
 
     matrix=assembleMatrix(mToB,kernel,quadRule=quadrule)
-    print matrix[0,0],matrix[1,0],matrix[2,0]
     identity=assembleIdentity(mToB,quadrule)
 
 
