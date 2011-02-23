@@ -112,7 +112,7 @@ if  __name__ == "__main__":
     d=Domain([circle])
     d2=Domain([circle2])
     mesh=Mesh([d,d2])
-    mesh.discretize(100)
+    mesh.discretize(50)
     quadrule=GaussQuadrature(5,3,0.15)
     #mToB=Legendre.legendreBasis(mesh,0)
     mToB=NodalLin.nodalLinBasis(mesh)

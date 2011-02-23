@@ -34,9 +34,10 @@ class Segment(object):
 
     """
     
-    def __init__(self,view=(0,1)):
+    def __init__(self,view=(0,1),refine=(False,False)):
         self.view=view
-        
+        self.refine=refine
+
         # Compute length of segment
        
 
@@ -63,7 +64,7 @@ class Segment(object):
         return np.sqrt(np.abs(vals[0,:])**2+np.abs(vals[1,:])**2)
 
 
-def subdivide(seg,n,k=None,nmin=10):
+def subdivide(seg,n,k=None,nmin=10,L=3,sigma=0.15):
     """Subdivide a segment into equal length subsegments
     
        INPUT:
@@ -91,15 +92,51 @@ def subdivide(seg,n,k=None,nmin=10):
     dup=copy.deepcopy(seg)
     dup.view=(seg.view[0]+t[n-1]*(seg.view[1]-seg.view[0]),seg.view[1])
     segs.append(dup)
+    if seg.refine[0]:
+        newsegs=exponentialRefine(segs[0],sigma,L,lr='l')
+        newsegs.extend(segs[1:])
+        segs=newsegs
+    if seg.refine[1]:
+        tmp=segs[:-1]
+        tmp.extend(exponentialRefine(segs[-1],sigma,L,lr='r'))
+        segs=tmp
     return segs
         
-    
+def exponentialRefine(seg,sigma,L,lr='l'):
+    """Exponentially refine a segmenent
+
+       If lr='l' refine towards 0.
+       If lr='r' refine towards 1.
+    """
+
+    intbounds=sigma**np.arange(L+1)
+    intbounds=np.append(intbounds,0)
+
+    if lr=='l': 
+        intbounds=intbounds[::-1]
+    else:
+        intbounds=1-intbounds
+
+    segs=[]
+    for i in range(len(intbounds)-1):
+        t1=intbounds[i]
+        t2=intbounds[i+1]
+        dup=copy.deepcopy(seg)
+        dup.view=(seg.view[0]+t1*(seg.view[1]-seg.view[0]),seg.view[0]+t2*(seg.view[1]-seg.view[0]))
+        dup.refine=(False,False)
+        segs.append(dup)
+
+    return segs
+
+
+
+
     
 class Line(Segment):
     """Define a line segment
     """
     
-    def __init__(self,a,b):
+    def __init__(self,a,b,refine=(False,False)):
         """Define a line segment
         
            line(a,b) returns a line segment between a and b           
@@ -108,7 +145,7 @@ class Line(Segment):
         self.a=a
         self.b=b
 
-        super(Line,self).__init__()
+        super(Line,self).__init__(refine=refine)
 
     def f(self,t): 
         return np.vstack([self.a[0]+t*(self.b[0]-self.a[0]),self.a[1]+t*(self.b[1]-self.a[1])])
@@ -122,7 +159,7 @@ class Arc(Segment):
     """Define an arc segment
     """
     
-    def __init__(self,x0,y0,a,b,r):
+    def __init__(self,x0,y0,a,b,r,refine=(False,False)):
         """Define an arc segment
         
            Input:
@@ -141,7 +178,7 @@ class Arc(Segment):
         self.r=r
 
     
-        super(Arc,self).__init__()
+        super(Arc,self).__init__(refine=refine)
 
     def f(self,t):
         return np.vstack([self.x0+self.r*np.cos(self.a+t*(self.b-self.a)),self.y0+self.r*np.sin(self.a+t*(self.b-self.a))])
@@ -153,10 +190,9 @@ class Arc(Segment):
         
 if __name__ == "__main__":
     
-    circle=Arc(0,0,0,np.pi,1)
-    print circle.length()
-    segs=subdivide(circle,10)
-    print len(segs)
-    print segs[0].view,segs[0].length(),segs[0].vals(np.array([1]))
-    segs2=subdivide(segs[0],10)
-    print segs2[0].view,segs2[0].length(),segs2[0].vals(np.array([1]))
+   a=Line((0,0),(1,0),refine=(True,True))
+   segs=subdivide(a,3)
+   for s in segs:
+       print s.vals(np.array([0,1]))
+
+
