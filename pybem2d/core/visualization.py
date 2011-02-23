@@ -37,8 +37,10 @@ class Visualizer(object):
             self.f=plt.figure()
         ax1=plt.subplot(1,2,1)
         ax1.imshow(scatt.T,extent=self.extent,vmin=-scale,vmax=scale,origin='lower')
+        plotBnd(self.evaluator.meshToBasis.mesh,ax1)
         ax2=plt.subplot(1,2,2)
         ax2.imshow(full.T,extent=self.extent,vmin=-scale,vmax=scale,origin='lower')
+        plotBnd(self.evaluator.meshToBasis.mesh,ax2)
         plt.show()
 
     def scattField(self,coeffs,imag=False,scale=1):
@@ -52,7 +54,9 @@ class Visualizer(object):
         if self.f is not None:
             plot.close()
             self.f=plt.figure()
-        plt.imshow(scatt.T,vmin=-scale,vmax=scale,origin='lower')
+        ax=plt.axes()
+        ax.imshow(scatt.T,vmin=-scale,vmax=scale,origin='lower')
+        plotBnd(self.evaluator.meshToBasis.mesh,ax)
         plt.show()
 
     def saveFig(self,filename):
@@ -88,9 +92,22 @@ def plotBndFun(meshToBasis,coeffs,n=100):
     for i in range(ndoms):
         ax=fig.add_subplot(10*ndoms+100+i+1)
         ax.plot(numpy.real(ylist[i]))
+
     plt.show()
 
         
+def plotBnd(mesh,ax):
+    """Plot the boundary of the mesh"""
+
+    seglist=mesh.segments
+
+    for d in seglist:
+        p=numpy.zeros((2,len(d)+1))
+        for i,s in enumerate(d):
+            p[:,i]=s.vals(numpy.array([0]))[:,0]
+        p[:,-1]=d[-1].vals(numpy.array([1]))[:,0]
+        ax.plot(p[0,:],p[1,:],'k-',lw=2)
+
 
 
 
@@ -127,7 +144,7 @@ if  __name__ == "__main__":
     coeffs=numpy.linalg.solve(.5*mIdentity+mKernel,rhs)
     plotBndFun(mToB,coeffs[:,0])
     ev=Evaluator(mToB,kernel,quadrule)
-    v=Visualizer(ev,[-1.5,3.5,-1,3],200,200,incWave=lambda x: numpy.exp(1j*k*x[0]))
+    v=Visualizer(ev,[-1.5,3.5,-1,3],100,100,incWave=lambda x: numpy.exp(1j*k*x[0]))
     v.fullField(coeffs[:,0])
     v.show()
 
