@@ -60,6 +60,18 @@ class AcousticConjDoubleLayer(object):
         a=sqrt(w[0]**2+w[1]**2)
         return -self.k*1j/4*hankel1(1,self.k*a)*(nx[0]*w[0]+nx[1]*w[1])/a
 
+class AcousticCombined(object):
+
+    def __init__(self,k,eta):
+        self.k=k
+        self.eta=eta
+        self.Conj=AcousticConjDoubleLayer(k)
+        self.Single=AcousticSingleLayer(k)
+
+    def __call__(self,x,y,nx=None,ny=None):
+        return self.Conj(x,y,nx,ny)-1j*self.eta*self.Single(x,y,nx,ny)
+
+
 class Identity(object):
 
     def __call__(self,x,y,nx=None,ny=None):
@@ -73,5 +85,6 @@ if  __name__ == "__main__":
     y=array([[4,5.1],[-6,7]])
     normal=array([[1,2],[2,3]])
     print ldouble(x,y,ny=normal)
+
 
 

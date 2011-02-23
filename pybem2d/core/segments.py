@@ -79,7 +79,7 @@ def subdivide(seg,n,k=None,nmin=10,L=3,sigma=0.15):
        A list of new segments
     """
     
-    if k is not None: n=max(1.0*k*seg.L/2/np.pi,nmin)
+    if k is not None: n=max(1.0*k*seg.length()/2/np.pi,nmin)
     lvec=seg.length()*np.arange(n,dtype='double')/n
     f= absderiv(seg.fp,seg.view)
     invabsderiv=lambda t,x: 1./f(t)
@@ -150,8 +150,12 @@ class Line(Segment):
     def f(self,t): 
         return np.vstack([self.a[0]+t*(self.b[0]-self.a[0]),self.a[1]+t*(self.b[1]-self.a[1])])
 
-    def fp(self,t): 
-        return np.vstack([[self.b[0]-self.a[0]],[self.b[1]-self.a[1]]])
+    def fp(self,t):
+        if not (type(t)==np.ndarray): 
+            n=1
+        else:
+            n=len(t)
+        return np.tile(np.vstack([[self.b[0]-self.a[0]],[self.b[1]-self.a[1]]]),n)
        
 
 
