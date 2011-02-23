@@ -28,7 +28,7 @@ class Mesh(object):
         self.nseglist=None
         self.seglist_flattened=None
 
-    def discretize(self,N,k=None,nmin=10):
+    def discretize(self,N,k=None,nmin=10,L=3,sigma=0.15):
         self.seglist=[d.discretize(N,k,nmin) for d in self.domainlist]
         self.nseglist=sum([len(d) for d in self.seglist])
         self.seglist_flattened=sum(self.seglist,[])
