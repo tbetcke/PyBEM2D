@@ -212,7 +212,7 @@ class Assembly(object):
 
 
     def getKernel(self,kernel):
-            kMatrix=assembleMatrix(self.meshToBasis,kernel,self.quadRule,self.nprocs)
+            kMatrix=assembleMatrix(self.meshToBasis,kernel,self.quadRule,nprocs=self.nprocs)
             if self.P is not None:
                 return numpy.dot(self.P,numpy.dot(kMatrix,self.P.T))
             else:
