@@ -19,7 +19,7 @@ class LogDoubleLayer(object):
     def __call__(self,x,y,nx=None,ny=None):
         w=y-x
         a=w[0]**2+w[1]**2
-        return (ny[0]*w[0]+ny[1]*w[1])*w/a
+        return (ny[0]*w[0]+ny[1]*w[1])/a
 
 class LogConjDoubleLayer(object):
     """Logarithmic Conjugate Double Layer Potential"""
@@ -27,7 +27,7 @@ class LogConjDoubleLayer(object):
     def __call__(self,x,y,nx=None,ny=None):
         w=x-y
         a=w[0]**2+w[1]**2
-        return (nx[0]*w[0]+nx[1]*w[1])*w/a
+        return (nx[0]*w[0]+nx[1]*w[1])/a
 
 class AcousticSingleLayer(object):
     """Acoustic Single Layer Potential"""

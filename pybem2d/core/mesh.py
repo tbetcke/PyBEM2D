@@ -3,7 +3,6 @@ Created on Dec 11, 2010
 
 @author: tbetcke
 '''
-from segments import subdivide
 
 class Domain(object):
     """A domain is a closed arc consisting of one or more segments"""
@@ -13,6 +12,7 @@ class Domain(object):
         self.L=sum([s.length() for s in seglist])
 
     def discretize(self,N,k=None,nmin=10):
+        from segments import subdivide
         return sum([subdivide(s,N,k,nmin) for s in self.seglist],[])
         
     segments=property(lambda self: self.seglist)

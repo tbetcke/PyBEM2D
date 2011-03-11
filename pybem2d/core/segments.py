@@ -5,6 +5,7 @@ Created on Dec 11, 2010
 '''
 import numpy as np
 from scipy.integrate import quad,odeint
+from pybem2d.core.mesh import Domain
 import copy
 
 def absderiv(fp,view):
@@ -79,7 +80,7 @@ def subdivide(seg,n,k=None,nmin=10,L=3,sigma=0.15):
        A list of new segments
     """
     
-    if k is not None: n=max(1.0*k*seg.length()/2/np.pi,nmin)
+    if k is not None: n=max(int(1.0*k*seg.length()/2/np.pi+1),nmin)
     lvec=seg.length()*np.arange(n,dtype='double')/n
     f= absderiv(seg.fp,seg.view)
     invabsderiv=lambda t,x: 1./f(t)
@@ -190,7 +191,47 @@ class Arc(Segment):
     def fp(self,t):
         return (self.b-self.a)*np.vstack([-self.r*np.sin(self.a+t*(self.b-self.a)),self.r*np.cos(self.a+t*(self.b-self.a))])
         
+class Ellipse(Segment):
+    """Define an ellipse arc
+
+       INPUT:
+       x0,y0 - Coordinates of centre point
+       a     - start angle in radians
+       b     - final angle in radians
+       r1    - First semi-axis
+       r2    - Second semi-axis
+
+    """
+    def __init__(self,x0,y0,a,b,r1,r2,refine=(False,False)):
+
+        self.x0=x0
+        self.y0=y0
+        self.a=a
+        self.b=b
+        self.r1=r1
+        self.r2=r2
+           
+        super(Ellipse,self).__init__(refine=refine)
+
+    def f(self,t):
+        return np.vstack([self.x0+self.r1*np.cos(self.a+t*(self.b-self.a)),self.y0+self.r2*np.sin(self.a+t*(self.b-self.a))])
         
+    def fp(self,t):
+        return (self.b-self.a)*np.vstack([-self.r1*np.sin(self.a+t*(self.b-self.a)),self.r2*np.cos(self.a+t*(self.b-self.a))])
+            
+
+
+def polygon(points,refine=True):
+    """Define a polygon from a list of points and return 
+       a corresponding domain object
+    """
+
+
+    segs=[]
+    tmp=points+points[0]
+    for i in range(points): segs.append(Line(tmp[i],tmp[i+1],(refine,refine)))
+    return Domain(segs)
+
         
 if __name__ == "__main__":
     

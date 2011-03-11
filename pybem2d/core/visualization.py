@@ -49,13 +49,13 @@ class Visualizer(object):
         if imag is True:
             scatt=numpy.imag(vals.reshape(self.xn,self.yn))
         else:
-            scatt=numpy.imag(vals.reshape(self.xn,self.yn))
+            scatt=numpy.real(vals.reshape(self.xn,self.yn))
 
         if self.f is not None:
             plot.close()
             self.f=plt.figure()
         ax=plt.axes()
-        ax.imshow(scatt.T,vmin=-scale,vmax=scale,origin='lower')
+        ax.imshow(scatt.T,vmin=-scale,vmax=scale,extent=self.extent,origin='lower')
         plotBnd(self.evaluator.meshToBasis.mesh,ax)
         plt.show()
 
