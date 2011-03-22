@@ -80,7 +80,7 @@ def subdivide(seg,n,k=None,nmin=10,L=3,sigma=0.15):
        A list of new segments
     """
     
-    if k is not None: n=max(int(1.0*k*seg.length()/2/np.pi+1),nmin)
+    if k is not None: n=max(int(1.0*np.real(k)*seg.length()/2/np.pi+1),nmin)
     lvec=seg.length()*np.arange(n,dtype='double')/n
     f= absderiv(seg.fp,seg.view)
     invabsderiv=lambda t,x: 1./f(t)
