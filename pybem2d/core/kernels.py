@@ -1,5 +1,5 @@
 from scipy.special import hankel1
-from numpy import sqrt,log, ones
+from numpy import sqrt,log, ones, pi
 
 
 def absdiff(x,y):
@@ -11,7 +11,7 @@ class LogSingleLayer(object):
     """Logarithmic Single Layer Potential"""
 
     def __call__(self,x,y,nx=None,ny=None):
-        return log(0,absdiff(x,y))
+        return -1.0/(2*pi)*log(absdiff(x,y))
 
 class LogDoubleLayer(object):
     """Logarithmic Double Layer Potential"""
@@ -19,7 +19,7 @@ class LogDoubleLayer(object):
     def __call__(self,x,y,nx=None,ny=None):
         w=y-x
         a=w[0]**2+w[1]**2
-        return (ny[0]*w[0]+ny[1]*w[1])/a
+        return -1.0/(2*pi)*(ny[0]*w[0]+ny[1]*w[1])/a
 
 class LogConjDoubleLayer(object):
     """Logarithmic Conjugate Double Layer Potential"""
@@ -27,7 +27,7 @@ class LogConjDoubleLayer(object):
     def __call__(self,x,y,nx=None,ny=None):
         w=x-y
         a=w[0]**2+w[1]**2
-        return (nx[0]*w[0]+nx[1]*w[1])/a
+        return -1/(2*pi)*(nx[0]*w[0]+nx[1]*w[1])/a
 
 class AcousticSingleLayer(object):
     """Acoustic Single Layer Potential"""
