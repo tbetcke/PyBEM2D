@@ -4,8 +4,12 @@ import numpy
 import time
 from scipy.linalg import circulant
 
-def integrate1D(elem,funs,quadRule):
-    """One dimensional integration routine""" 
+def integrate1D(elem,funs,quadRule,fun2=None):
+    """One dimensional integration routine
+    
+       Integrates fun over an element. If fun2 is defined the product
+       fun*fun2 is integrated.
+    """ 
 
     x,w=quadRule.quad1D['x'],quadRule.quad1D['w']
 
@@ -14,7 +18,10 @@ def integrate1D(elem,funs,quadRule):
     xpnormals=elem['segment'].normals(x)
 
     f1tx=numpy.array([f(x,xp,xpnormals) for f in elem['basis']]).conj()
-    f2tx=numpy.array([f(x,xp,xpnormals) for f in funs]).T
+    if fun2 is not None:
+        f2tx=numpy.array([f(x,xp,xpnormals)*fun2(x,xp,xpnormals) for f in funs]).T
+    else:
+        f2tx=numpy.array([f(x,xp,xpnormals) for f in funs]).T    
 
     return numpy.dot(f1tx*xpdet*w,f2tx)
 
@@ -148,14 +155,24 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
 def assembleIdentity(meshToBasis,quadRule):
     """Assemble the Identity Matrix in the given basis"""
 
+    return assembleMultiplicationOperator(meshToBasis,quadRule)
+    
+def assembleMultiplicationOperator(meshToBasis, quadRule, multOp=None):
+    """Assemble a multiplication operator in the given basis
+    
+       If multOp is None then the discretisation of the identity operator
+       is returned
+    
+    """    
     nbasis=meshToBasis.nbasis
     nelements=meshToBasis.nelements
     result=numpy.zeros((nbasis,nbasis),dtype=numpy.complex128)
 
     for elem in meshToBasis:
-        block=integrate1D(elem,elem['basis'],quadRule)
+        block=integrate1D(elem,elem['basis'],quadRule,fun2=multOp)
         result[numpy.ix_(elem['basIds'],elem['basIds'])]=block
     return result
+    
 
 def projFun(meshToBasis,fun,quadRule):
     """Project the functions in the list fun onto the basis defined by meshToBasis"""
@@ -204,26 +221,29 @@ class Assembly(object):
 
 
     def getIdentity(self):
-            ident=assembleIdentity(self.meshToBasis,self.quadRule)
-            if self.P is not None:
-                return numpy.dot(self.P,numpy.dot(ident,self.P.T))
-            else:
-                return ident
+        return self.getMultOperator()
+                
+    def getMultOperator(self,multOp=None):
+        result=assembleMultiplicationOperator(self.meshToBasis,self.quadRule,multOp)
+        if self.P is not None:
+            return numpy.dot(self.P,numpy.dot(result,self.P.T))
+        else:
+            return result
 
 
     def getKernel(self,kernel):
-            kMatrix=assembleMatrix(self.meshToBasis,kernel,self.quadRule,nprocs=self.nprocs)
-            if self.P is not None:
-                return numpy.dot(self.P,numpy.dot(kMatrix,self.P.T))
-            else:
-                return kMatrix
+        kMatrix=assembleMatrix(self.meshToBasis,kernel,self.quadRule,nprocs=self.nprocs)
+        if self.P is not None:
+            return numpy.dot(self.P,numpy.dot(kMatrix,self.P.T))
+        else:
+            return kMatrix
 
     def projFun(self,flist):
-            vec=projFun(self.meshToBasis,flist,self.quadRule)
-            if self.P is not None:
-                return numpy.dot(self.P,vec)
-            else:
-                return vec
+        vec=projFun(self.meshToBasis,flist,self.quadRule)
+        if self.P is not None:
+            return numpy.dot(self.P,vec)
+        else:
+            return vec
 
 
 

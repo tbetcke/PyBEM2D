@@ -34,7 +34,7 @@ def shift2d(x,w,a,b):
 class GaussQuadrature:
     """Container class containing the needed 2D quadrature rules"""
 
-    def __init__(self,n,recDepth,sigma):
+    def __init__(self,n=5,recDepth=3,sigma=0.15):
         self.x,self.w=gauss(n)
         self.x2,self.w2=gauss2d(n)
         self.recDepth=recDepth
