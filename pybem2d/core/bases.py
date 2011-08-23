@@ -110,5 +110,4 @@ if __name__ == "__main__":
     mesh=Mesh([d,d])
     mesh.discretize(2)
     mToB=Legendre.legendreBasis(mesh,3)
-    for e in mToB: print e['domId'],e['segId'],e['next'],e['prev']
     print mToB.nbasis

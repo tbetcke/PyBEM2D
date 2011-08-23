@@ -228,7 +228,7 @@ def polygon(points,refine=True):
 
 
     segs=[]
-    tmp=points+points[0]
+    tmp=points+[points[0]]
     for i in range(len(points)): segs.append(Line(tmp[i],tmp[i+1],(refine,refine)))
     return Domain(segs)
 
