@@ -16,7 +16,7 @@ dirs=np.array([1.0,0])
 
 
 # Define the mesh
-circle=pcs.Arc(0,0,0,2*np.pi,1.0)
+circle=pcs.Arc(3,0,0,2*np.pi,1.0)
 d=pcm.Domain([circle])
 mesh=pcm.Mesh([d])
 mesh.discretize(nelems)
@@ -34,10 +34,11 @@ rhs=assembly.projFun([rhsfun])
 mKernel=assembly.getKernel(kernel)
 mIdentity=assembly.getIdentity()
 op=mIdentity+2*mKernel
+print op.shape
 
 coeffs=np.linalg.solve(op,rhs)
 ev=pce.Evaluator(mToB,singleLayer,quadrule)
-v=pcv.Visualizer(ev,[-3,3,-3,3],200,200,incWave=lambda x: np.exp(1j*k*x[0]*dirs[0]+x[1]*dirs[1]))
+v=pcv.Visualizer(ev,[-3,5,-3,3],200,200,incWave=lambda x: np.exp(1j*k*x[0]*dirs[0]+x[1]*dirs[1]))
 v.fullField(-coeffs[:,0])
 
 

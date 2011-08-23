@@ -1,4 +1,4 @@
-from core.segments import Segment,Line,Arc,Ellipse
+from core.segments import Segment,Line,Arc,Ellipse,polygon
 from core.mesh import Domain,Mesh
 from core.bases import ElementToBasis, MeshToBasis, NodalLin, Legendre
 from core.kernels import (LogSingleLayer, LogDoubleLayer, LogConjDoubleLayer,
