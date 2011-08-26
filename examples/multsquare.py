@@ -10,7 +10,7 @@ import pybem2d.core.visualization as pcv
 import numpy as np
 
 
-k=10
+k=20
 nelems=50
 dirs=1/np.sqrt(2)*np.array([1.0,1.0])
 

@@ -21,13 +21,13 @@ class Segment(object):
        A segment is a smooth arc given by a parametric function
        t->f(t), t in (0,1) and its tangential derivative fp(t)
        If t is an array array([t0,t1,..,tn]). Then
-       f(t)=[[fx(t0),fx(t1),...,fx(tn)],
-             [fy(t0),fy(t1),...,fy(tn)]]
+       f(t)=array([[fx(t0),fx(t1),...,fx(tn)],
+                 [fy(t0),fy(t1),...,fy(tn)]])
 
        and
-       fp(t)=[[fpx(t0),fpx(t1),...,fpx(tn)],
-              [fpy(t0),fpy(t1),...,fpy(tn)]]
-
+       fp(t)=array([[fpx(t0),fpx(t1),...,fpx(tn)],
+               [fpy(t0),fpy(t1),...,fpy(tn)]])
+ 
        Methods:
         vals(t)    - Values of the Parameterization at t
         normals(t) - Return normal vectors
