@@ -1,5 +1,5 @@
 from matplotlib import pyplot as plt
-from evaluation import evaluate
+from evaluation import evaluate,evalDensity
 import numpy
 
 
@@ -109,7 +109,45 @@ def plotBnd(mesh,ax):
         ax.plot(p[0,:],p[1,:],'k-',lw=2)
 
 
+def plotDensity(mToB,coeffs,n=100,plotVals="real",plotBnd=True):
+    """Plot boundary density with Mayavi
+    
+       INPUT:
+       mToB     - Mesh-to-Basis map
+       coeffs   - Coefficients of boundary density
+       n        - Discretisation points per element (default 100)
+       plotVals - "real", "imag" or "abs" for real/imaginary part or absolute values
+                  (default "real")
+       plotBnd  - Also plot boundary of shape (default True)
+    """
 
+    from mayavi import mlab
+
+    transforms={"real":numpy.real,"imag":numpy.imag,"abs":numpy.abs}
+    
+    x,f=evalDensity(mToB,coeffs,n)    
+    f=transforms[plotVals](f)
+                    
+    xmin=min(x[0])
+    xmax=max(x[0])
+    ymin=min(x[1])
+    ymax=max(x[1])
+    zmin=max([-1,min(f)])
+    zmax=min([1,max(f)])
+    extent=[xmin,xmax,ymin,ymax,zmin,zmax]
+    ranges=[xmin,xmax,ymin,ymax,min(f),max(f)]
+    
+    fig=mlab.figure(bgcolor=(1,1,1))
+    mlab.plot3d(x[0],x[1],f,extent=extent,color=(0,0,0),tube_radius=None,figure=fig)
+    if plotBnd:
+        mlab.plot3d(x[0],x[1],numpy.zeros(x[0].shape),extent=[xmin,xmax,ymin,ymax,0,0],tube_radius=None,figure=fig)
+    mlab.axes(extent=extent,ranges=ranges,line_width=3.0,figure=fig)
+    mlab.show()
+    
+
+    
+    
+    
 
 
 if  __name__ == "__main__":

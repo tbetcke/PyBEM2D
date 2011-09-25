@@ -4,6 +4,40 @@ from multiprocessing import Process, JoinableQueue, cpu_count, sharedctypes
 import time
 from scipy.linalg import circulant
 
+
+def evalDensity(mToB,coeffs,n=10):
+    """Evaluate a boundary density function associated with a coefficient vector coeffs
+    
+       INPUT:
+       mToB    - Mesh-To-Basis Dictionary
+       coeffs  - coefficient vector
+       n       - Number of discretization points per element (default 10)
+       
+       OUTPUT:
+       Tupel (x,f), where x is an array of the form
+       [x_1,x_2], where x_1 is an array of x-coordinates of the evaluation points
+       and x_2 is an array of y-coordinates of evaluation points. f stores the
+       values of the density at x, that means f=f(x_1,x_2).
+       
+    """
+    if mToB.P is not None:
+        coeffs=numpy.dot(self.P.T,coeffs)
+    f=numpy.zeros(n*mToB.nelements+1,dtype=numpy.complex128)
+    x=numpy.zeros((2,n*mToB.nelements+1),dtype=numpy.double)
+    
+    t=numpy.arange(n,dtype=numpy.double)/n
+    for i,eToB in enumerate(mToB):
+        xp=eToB['segment'].vals(t)
+        normals=eToB['segment'].normals(t)
+        bas=numpy.array([fun(t,xp,normals) for fun in eToB['basis']])
+        f[i*n:(i+1)*n]=numpy.dot(coeffs[eToB['basIds']],bas)        
+        x[:,i*n:(i+1)*n]=xp
+    
+    f[-1]=f[0]      # Append first element at the end again to
+    x[:,-1]=x[:,0]  # for better plotting results.
+    return x,f    
+    
+
 class EvaluationWorker(Process):
 
 

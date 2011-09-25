@@ -37,9 +37,11 @@ op=mIdentity+2*mKernel
 print op.shape
 
 coeffs=np.linalg.solve(op,rhs)
-ev=pce.Evaluator(mToB,singleLayer,quadrule)
-v=pcv.Visualizer(ev,[-3,5,-3,3],200,200,incWave=lambda x: np.exp(1j*k*(x[0]*dirs[0]+x[1]*dirs[1])))
-v.fullField(-coeffs[:,0])
+#ev=pce.Evaluator(mToB,singleLayer,quadrule)
+#v=pcv.Visualizer(ev,[-3,5,-3,3],200,200,incWave=lambda x: np.exp(1j*k*(x[0]*dirs[0]+x[1]*dirs[1])))
+#v.fullField(-coeffs[:,0])
+
+x,f=pce.evalDensity(mToB,coeffs[:,0])
 
 
 
