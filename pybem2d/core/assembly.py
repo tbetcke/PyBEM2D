@@ -25,7 +25,7 @@ def integrate1D(elem,funs,quadRule,fun2=None):
 
     return numpy.dot(f1tx*xpdet*w,f2tx)
 
-def assembleElement(eTest,eBas,kernel,quadRule=None,forceQuadRule=None):
+def assembleElement(eTest,eBas,kernel,quadRule=None,forceQuadRule=None,multOpx=None,multOpy=None):
     """Assemble the submatrix associated with two elements eTest, eBas using the
        quadrature quadrule.
 
@@ -65,7 +65,8 @@ def assembleElement(eTest,eBas,kernel,quadRule=None,forceQuadRule=None):
     ypnormals=eBas['segment'].normals(x[1])
     ftx=numpy.array([f(x[0],xp,xpnormals) for f in eTest['basis']]).conj()
     fty=numpy.array([f(x[1],yp,ypnormals) for f in eBas['basis']])
-
+    if multOpy is not None: fty=fty*multOpy(x[1],yp,ypnormals)
+    if multOpx is not None: ftx=ftx*numpy.conj(multOpx(x[0],xp,xpnormals))
 
     kernelVals=kernel(xp,yp,nx=xpnormals,ny=ypnormals)
     t1=ftx*xpdet*kernelVals*w
@@ -75,7 +76,7 @@ def assembleElement(eTest,eBas,kernel,quadRule=None,forceQuadRule=None):
 
 
 
-def assembleSegment(eTest,meshToBasis,kernel,quadRule=None,forceQuadRule=None):
+def assembleSegment(eTest,meshToBasis,kernel,quadRule=None,forceQuadRule=None,multOpx=None,multOpy=None):
     """Assemble the rows of the matrix associated with the test functions on
        the element eTest.
 
@@ -85,13 +86,13 @@ def assembleSegment(eTest,meshToBasis,kernel,quadRule=None,forceQuadRule=None):
 
     result=numpy.zeros((eTest['nbas'],meshToBasis.nbasis),dtype=numpy.complex128)
     for eBas in meshToBasis:
-        result[:,eBas['basIds']]=assembleElement(eTest,eBas,kernel,quadRule,forceQuadRule)
+        result[:,eBas['basIds']]=assembleElement(eTest,eBas,kernel,quadRule,forceQuadRule,multOpx=multOpx,multOpy=multOpy)
     
     return result
 
 class AssemblyWorker(Process):
 
-    def  __init__(self,meshToBasis,inputQueue,resMatrix,kernel,quadRule=None,forceQuadRule=None):
+    def __init__(self,meshToBasis,inputQueue,resMatrix,kernel,quadRule=None,forceQuadRule=None,multOpx=None,multOpy=None):
         super(AssemblyWorker,self).__init__()
         self.meshToBasis=meshToBasis
         self.inputQueue=inputQueue
@@ -99,18 +100,20 @@ class AssemblyWorker(Process):
         self.quadRule=quadRule
         self.forceQuadRule=forceQuadRule
         self.resMatrix=resMatrix
+        self.multOpx=multOpx
+        self.multOpy=multOpy
 
     def run(self):
         while self.inputQueue.empty() is False:
             try:
                 eTest=self.inputQueue.get_nowait()
-                result=assembleSegment(eTest,self.meshToBasis,self.kernel,self.quadRule,self.forceQuadRule)
+                result=assembleSegment(eTest,self.meshToBasis,self.kernel,self.quadRule,self.forceQuadRule,multOpx=self.multOpx,multOpy=self.multOpy)
                 self.resMatrix[eTest['basIds'],:]=result
                 self.inputQueue.task_done()
             except Empty:
                 pass
 
-def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=None):
+def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,multOpx=None,multOpy=None,nprocs=None):
     """Assemble the discrete BEM matrix using the given kernel"""
 
     if nprocs==None: nprocs=cpu_count()
@@ -139,7 +142,7 @@ def assembleMatrix(meshToBasis,kernel,quadRule=None,forceQuadRule=None,nprocs=No
     workers=[]
 
     for id in range(nprocs):
-        worker=AssemblyWorker(meshToBasis,inputQueue,resMatrix,kernel,quadRule,forceQuadRule)
+        worker=AssemblyWorker(meshToBasis,inputQueue,resMatrix,kernel,quadRule,forceQuadRule,multOpx=multOpx,multOpy=multOpy)
         worker.start()
         workers.append(worker)
 
@@ -231,8 +234,8 @@ class Assembly(object):
             return result
 
 
-    def getKernel(self,kernel):
-        kMatrix=assembleMatrix(self.meshToBasis,kernel,self.quadRule,nprocs=self.nprocs)
+    def getKernel(self,kernel,multOpx=None,multOpy=None):
+        kMatrix=assembleMatrix(self.meshToBasis,kernel,self.quadRule,multOpx=multOpx,multOpy=multOpy,nprocs=self.nprocs)
         if self.P is not None:
             return numpy.dot(self.P,numpy.dot(kMatrix,self.P.T))
         else:
